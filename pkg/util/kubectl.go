@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
+
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // kubectlGetNodesJSON parses the output of the "kubectl get nodes -o json" command.
@@ -39,17 +43,30 @@ func parseControlPlaneNodeIPs(jsonOutput []byte) ([]string, error) {
 
 // ListControlPlaneNodeIPs returns the internal IPs of the control plane nodes of the MicroK8s cluster.
 func ListControlPlaneNodeIPs(ctx context.Context) ([]string, error) {
-	cmd := exec.CommandContext(
-		ctx,
-		SnapPath("microk8s-kubectl.wrapper"), "get", "nodes",
-		"-l", "node.kubernetes.io/microk8s-controlplane=microk8s-controlplane",
-		"-o", "json",
-	)
-
-	stdout, err := cmd.CombinedOutput()
+	config, err := clientcmd.BuildConfigFromFlags("", SnapDataPath("credentials", "client.config"))
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute kubectl command: %w", err)
+		return nil, fmt.Errorf("failed to read load kubeconfig: %w", err)
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize kubernetes client: %w", err)
 	}
 
-	return parseControlPlaneNodeIPs(stdout)
+	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{
+		LabelSelector: "node.kubernetes.io/microk8s-controlplane=microk8s-controlplane",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list nodes: %w", err)
+	}
+
+	addresses := make([]string, 0, len(nodes.Items))
+	for _, node := range nodes.Items {
+		for _, address := range node.Status.Addresses {
+			if address.Type == v1.NodeInternalIP {
+				addresses = append(addresses, address.Address)
+			}
+		}
+	}
+
+	return addresses, nil
 }
