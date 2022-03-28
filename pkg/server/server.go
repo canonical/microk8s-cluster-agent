@@ -7,6 +7,7 @@ import (
 
 	v1 "github.com/canonical/microk8s-cluster-agent/pkg/api/v1"
 	v2 "github.com/canonical/microk8s-cluster-agent/pkg/api/v2"
+	"github.com/canonical/microk8s-cluster-agent/pkg/httputil"
 	"github.com/canonical/microk8s-cluster-agent/pkg/middleware"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -29,18 +30,6 @@ func NewServer(timeout time.Duration, enableMetrics bool, apiv1 *v1.API, apiv2 *
 	if enableMetrics {
 		server.HandleFunc("/metrics", withMiddleware(promhttp.Handler().ServeHTTP))
 	}
-
-	// POST /v1/join
-	server.HandleFunc(fmt.Sprintf("%s/join", ClusterAPIV1), withMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		req := v1.JoinRequest{}
-		if err := UnmarshalJSON(r, &req); err != nil {
-			HTTPError(w, http.StatusBadRequest, err)
-			return
-		}
 
 	// Cluster Agent API
 	apiv1.RegisterServer(server, withMiddleware)
