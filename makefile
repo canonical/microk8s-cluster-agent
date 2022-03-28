@@ -1,6 +1,6 @@
 all: cluster-agent
 
-.PHONY = fmt vet lint staticcheck test
+.PHONY = go.fmt go.vet go.lint go.staticcheck go.test
 
 cluster-agent: **.go
 	go build -ldflags '-s -w' -o cluster-agent ./main.go

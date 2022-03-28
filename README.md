@@ -13,7 +13,7 @@ sudo snap install go --classic
 Run all tests with:
 
 ```bash
-make go.lint go.test go.vet go.staticcheck
+make go.fmt go.lint go.test go.vet go.staticcheck
 ```
 
 ## Build
