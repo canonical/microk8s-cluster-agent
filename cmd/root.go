@@ -21,6 +21,7 @@ var (
 	certfile      string
 	timeout       int
 	devMode       bool
+	enableMetrics bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -46,7 +47,8 @@ lifecycle of a MicroK8s cluster.`,
 			}
 		}
 
-		s := server.NewServer(time.Duration(timeout)*time.Second, apiv1, apiv2)
+		s := server.NewServer(time.Duration(timeout)*time.Second, enableMetrics, apiv1, apiv2)
+
 		log.Printf("Starting cluster agent on https://%s\n", bind)
 		if err := http.ListenAndServeTLS(bind, certfile, keyfile, s); err != nil {
 			log.Fatalf("Failed to listen: %s", err)
@@ -68,6 +70,7 @@ func init() {
 	rootCmd.Flags().StringVar(&keyfile, "keyfile", "", "Private key for serving TLS")
 	rootCmd.Flags().StringVar(&certfile, "certfile", "", "Certificate for serving TLS")
 	rootCmd.Flags().IntVar(&timeout, "timeout", 240, "Default request timeout (in seconds)")
+	rootCmd.Flags().BoolVar(&enableMetrics, "enable-metrics", false, "Enable metrics endpoint")
 
 	// TODO: remove
 	rootCmd.Flags().BoolVar(&devMode, "devmode", false, "Turn on development mode (local data, mock commands)")

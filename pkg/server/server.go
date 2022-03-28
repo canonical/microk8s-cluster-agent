@@ -8,6 +8,7 @@ import (
 	v1 "github.com/canonical/microk8s-cluster-agent/pkg/api/v1"
 	v2 "github.com/canonical/microk8s-cluster-agent/pkg/api/v2"
 	"github.com/canonical/microk8s-cluster-agent/pkg/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 )
 
 // NewServer creates a new *http.ServeMux and registers the MicroK8s cluster agent API endpoints.
-func NewServer(timeout time.Duration, apiv1 *v1.API, apiv2 *v2.API) *http.ServeMux {
+func NewServer(timeout time.Duration, enableMetrics bool, apiv1 *v1.API, apiv2 *v2.API) *http.ServeMux {
 	server := http.NewServeMux()
 
 	withMiddleware := func(f http.HandlerFunc) http.HandlerFunc {
@@ -30,6 +31,11 @@ func NewServer(timeout time.Duration, apiv1 *v1.API, apiv2 *v2.API) *http.ServeM
 	server.HandleFunc("/", withMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		HTTPError(w, http.StatusNotFound, fmt.Errorf("not found"))
 	}))
+
+	// Prometheus metrics
+	if enableMetrics {
+		server.HandleFunc("/metrics", withMiddleware(promhttp.Handler().ServeHTTP))
+	}
 
 	// POST /v1/join
 	server.HandleFunc(fmt.Sprintf("%s/join", ClusterAPIV1), withMiddleware(func(w http.ResponseWriter, r *http.Request) {
