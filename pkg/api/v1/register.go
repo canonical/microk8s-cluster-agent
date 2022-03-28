@@ -8,9 +8,9 @@ import (
 )
 
 // HTTPPrefix is the prefix for all v1 API routes.
-const HTTPPrefix = "/cluster/api/1.0"
+const HTTPPrefix = "/cluster/api/v1.0"
 
-// RegisterServer registers the Cluster API v2 endpoints on an HTTP server.
+// RegisterServer registers the Cluster API v1 endpoints on an HTTP server.
 func (a *API) RegisterServer(server *http.ServeMux, middleware func(f http.HandlerFunc) http.HandlerFunc) {
 	// POST /v1/join
 	server.HandleFunc(fmt.Sprintf("%s/join", HTTPPrefix), middleware(func(w http.ResponseWriter, r *http.Request) {
