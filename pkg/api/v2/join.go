@@ -136,7 +136,7 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to read arguments of kubelet service: %w", err)
 	}
-	if util.GetRemoteHost(req.RemoteHostName, req.RemoteAddress) != req.RemoteHostName {
+	if util.GetRemoteHost(a.LookupIP, req.RemoteHostName, req.RemoteAddress) != req.RemoteHostName {
 		kubeletArgs = fmt.Sprintf("%s\n--hostname-override=%s", kubeletArgs, remoteIP)
 	}
 

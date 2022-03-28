@@ -3,6 +3,7 @@ package v2_test
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -18,6 +19,12 @@ import (
 // TestJoin tests responses when joining control plane and worker nodes in an existing cluster.
 func TestJoin(t *testing.T) {
 	apiv2 := &v2.API{
+		LookupIP: func(hostname string) ([]net.IP, error) {
+			return map[string][]net.IP{
+				"test-control-plane": {{10, 10, 10, 13}},
+				"test-worker":        {{10, 10, 10, 12}},
+			}[hostname], nil
+		},
 		ListControlPlaneNodeIPs: mockListControlPlaneNodes("10.0.0.1", "10.0.0.2"),
 	}
 	// Create test data
@@ -81,7 +88,7 @@ admin-token-123,admin,admin,"system:masters"
 
 			resp, err := apiv2.Join(context.Background(), v2.JoinRequest{
 				ClusterToken:     "control-plane-token",
-				RemoteHostName:   "some-invalid-hostname",
+				RemoteHostName:   "test-control-plane",
 				ClusterAgentPort: "25000",
 				HostPort:         "10.10.10.10:25000",
 				RemoteAddress:    "10.10.10.13:41532",
@@ -99,7 +106,7 @@ admin-token-123,admin,admin,"system:masters"
 				CallbackToken:              "callback-token",
 				APIServerPort:              "16443",
 				APIServerAuthorizationMode: "Node,RBAC",
-				KubeletArgs:                "kubelet arguments\n\n--hostname-override=10.10.10.13",
+				KubeletArgs:                "kubelet arguments\n",
 				HostNameOverride:           "10.10.10.13",
 				DqliteVoterNodes:           []string{"10.10.10.10:19001", "10.10.10.11:19001"},
 				ServiceAccountKey:          "SERVICE ACCOUNT KEY DATA",
@@ -132,7 +139,7 @@ admin-token-123,admin,admin,"system:masters"
 		utiltest.WithMockRunner(m, func(t *testing.T) {
 			resp, err := apiv2.Join(context.Background(), v2.JoinRequest{
 				ClusterToken:     "worker-token",
-				RemoteHostName:   "10.10.10.12",
+				RemoteHostName:   "test-worker",
 				RemoteAddress:    "10.10.10.12:31451",
 				WorkerOnly:       true,
 				HostPort:         "10.10.10.10:25000",
@@ -182,7 +189,11 @@ admin-token-123,admin,admin,"system:masters"
 // TestJoinFirstNode tests responses when joining a control plane node on a new cluster.
 // TestJoinFirstNode mocks the dqlite bind address update and verifies that is is handled properly.
 func TestJoinFirstNode(t *testing.T) {
-	apiv2 := &v2.API{}
+	apiv2 := &v2.API{
+		LookupIP: func(hostname string) ([]net.IP, error) {
+			return nil, nil
+		},
+	}
 	m := &utiltest.MockRunner{}
 	utiltest.WithMockRunner(m, func(t *testing.T) {
 		// Create test data
@@ -238,7 +249,7 @@ admin-token-123,admin,admin,"system:masters"
 
 		resp, err := apiv2.Join(context.Background(), v2.JoinRequest{
 			ClusterToken:     "control-plane-token",
-			RemoteHostName:   "some-invalid-hostname",
+			RemoteHostName:   "test-worker-nohostname",
 			ClusterAgentPort: "25000",
 			HostPort:         "10.10.10.10:25000",
 			RemoteAddress:    "10.10.10.13:41532",

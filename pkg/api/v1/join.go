@@ -57,7 +57,7 @@ func (a *API) Join(ctx context.Context, request JoinRequest) (*JoinResponse, err
 	if err := util.AddCertificateRequestToken(request.ClusterToken); err != nil {
 		return nil, fmt.Errorf("failed to add certificate request token: %w", err)
 	}
-	hostname := util.GetRemoteHost(request.HostName, request.RemoteAddress)
+	hostname := util.GetRemoteHost(a.LookupIP, request.HostName, request.RemoteAddress)
 	clusterAgentEndpoint := net.JoinHostPort(hostname, request.ClusterAgentPort)
 
 	if err := util.AddCallbackToken(clusterAgentEndpoint, request.CallbackToken); err != nil {

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -31,8 +32,11 @@ var rootCmd = &cobra.Command{
 	Long: `The MicroK8s cluster agent is an API server that orchestrates the
 lifecycle of a MicroK8s cluster.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		apiv1 := &v1.API{}
+		apiv1 := &v1.API{
+			LookupIP: net.LookupIP,
+		}
 		apiv2 := &v2.API{
+			LookupIP:                net.LookupIP,
 			ListControlPlaneNodeIPs: util.ListControlPlaneNodeIPs,
 		}
 

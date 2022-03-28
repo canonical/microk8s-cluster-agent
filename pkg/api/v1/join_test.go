@@ -2,6 +2,7 @@ package v1_test
 
 import (
 	"context"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,7 +13,9 @@ import (
 )
 
 func TestJoin(t *testing.T) {
-	apiv1 := &v1.API{}
+	apiv1 := &v1.API{
+		LookupIP: net.LookupIP,
+	}
 	m := &utiltest.MockRunner{}
 	utiltest.WithMockRunner(m, func(t *testing.T) {
 		// Create test data
