@@ -86,15 +86,25 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, error) 
 		return nil, fmt.Errorf("failed to join the cluster: this is not an HA MicroK8s cluster")
 	}
 
-	// Sanity check cluster agent ports.
+	// Check cluster agent ports.
 	clusterAgentBind := util.GetServiceArgument("cluster-agent", "--bind")
 	_, port, _ := net.SplitHostPort(clusterAgentBind)
 	if port != req.ClusterAgentPort {
 		return nil, fmt.Errorf("cluster agent port needs to be set to %s", port)
 	}
 
-	// Sanity check node is not in cluster already.
+	// Prevent joins in the same node.
 	remoteIP, _, _ := net.SplitHostPort(req.RemoteAddress)
+	if hostIP, _, _ := net.SplitHostPort(req.HostPort); remoteIP == hostIP {
+		return nil, fmt.Errorf("the joining node has the same IP (%s) as the node we contact", hostIP)
+	}
+
+	// Check that hostname resolves to the expected IP address
+	if util.GetRemoteHost(a.LookupIP, req.RemoteHostName, req.RemoteAddress) != req.RemoteHostName {
+		return nil, fmt.Errorf("the hostname %q does not resolve to the IP %q. refusing join", req.RemoteHostName, remoteIP)
+	}
+
+	// Check node is not in cluster already.
 	dqliteCluster, err := util.GetDqliteCluster()
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve dqlite cluster nodes: %w", err)
@@ -104,8 +114,6 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, error) 
 			return nil, fmt.Errorf("joining node %q is already known to dqlite", remoteIP)
 		}
 	}
-
-	// TODO(akolaitis): Sanity check that hostname resolves to expected IP address.
 
 	// Update dqlite cluster if needed
 	if len(dqliteCluster) == 1 && strings.HasPrefix(dqliteCluster[0].Address, "127.0.0.1:") {
@@ -135,9 +143,6 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, error) 
 	kubeletArgs, err := util.ReadFile(util.SnapDataPath("args", "kubelet"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read arguments of kubelet service: %w", err)
-	}
-	if util.GetRemoteHost(a.LookupIP, req.RemoteHostName, req.RemoteAddress) != req.RemoteHostName {
-		kubeletArgs = fmt.Sprintf("%s\n--hostname-override=%s", kubeletArgs, remoteIP)
 	}
 
 	if err := util.MaybePatchCalicoAutoDetectionMethod(ctx, remoteIP, true); err != nil {

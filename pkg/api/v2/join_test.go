@@ -191,7 +191,7 @@ admin-token-123,admin,admin,"system:masters"
 func TestJoinFirstNode(t *testing.T) {
 	apiv2 := &v2.API{
 		LookupIP: func(hostname string) ([]net.IP, error) {
-			return nil, nil
+			return []net.IP{{10, 10, 10, 13}}, nil
 		},
 	}
 	m := &utiltest.MockRunner{}
@@ -267,7 +267,7 @@ admin-token-123,admin,admin,"system:masters"
 			CallbackToken:              "callback-token",
 			APIServerPort:              "16443",
 			APIServerAuthorizationMode: "Node",
-			KubeletArgs:                "kubelet arguments\n\n--hostname-override=10.10.10.13",
+			KubeletArgs:                "kubelet arguments\n",
 			HostNameOverride:           "10.10.10.13",
 			DqliteVoterNodes:           []string{"10.10.10.10:19001"},
 			ServiceAccountKey:          "SERVICE ACCOUNT KEY DATA",
