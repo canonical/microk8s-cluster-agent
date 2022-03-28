@@ -15,6 +15,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	bind          string
+	keyfile       string
+	certfile      string
+	timeout       int
+	devMode       bool
+)
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "cluster-agent",
@@ -22,12 +30,6 @@ var rootCmd = &cobra.Command{
 	Long: `The MicroK8s cluster agent is an API server that orchestrates the
 lifecycle of a MicroK8s cluster.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		bind, _ := cmd.Flags().GetString("bind")
-		key, _ := cmd.Flags().GetString("keyfile")
-		cert, _ := cmd.Flags().GetString("certfile")
-		timeout, _ := cmd.Flags().GetInt("timeout")
-		devMode, _ := cmd.Flags().GetBool("devmode")
-
 		apiv1 := &v1.API{}
 		apiv2 := &v2.API{
 			ListControlPlaneNodeIPs: util.ListControlPlaneNodeIPs,
@@ -46,7 +48,7 @@ lifecycle of a MicroK8s cluster.`,
 
 		s := server.NewServer(time.Duration(timeout)*time.Second, apiv1, apiv2)
 		log.Printf("Starting cluster agent on https://%s\n", bind)
-		if err := http.ListenAndServeTLS(bind, cert, key, s); err != nil {
+		if err := http.ListenAndServeTLS(bind, certfile, keyfile, s); err != nil {
 			log.Fatalf("Failed to listen: %s", err)
 		}
 	},
@@ -62,9 +64,11 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.Flags().String("bind", "0.0.0.0:25000", "Listen address for server")
-	rootCmd.Flags().String("keyfile", "", "Private key for serving TLS")
-	rootCmd.Flags().String("certfile", "", "Certificate for serving TLS")
-	rootCmd.Flags().Int("timeout", 240, "Default request timeout (in seconds)")
-	rootCmd.Flags().Bool("devmode", false, "Turn on development mode (local data, mock commands)")
+	rootCmd.Flags().StringVar(&bind, "bind", "0.0.0.0:25000", "Listen address for server")
+	rootCmd.Flags().StringVar(&keyfile, "keyfile", "", "Private key for serving TLS")
+	rootCmd.Flags().StringVar(&certfile, "certfile", "", "Certificate for serving TLS")
+	rootCmd.Flags().IntVar(&timeout, "timeout", 240, "Default request timeout (in seconds)")
+
+	// TODO: remove
+	rootCmd.Flags().BoolVar(&devMode, "devmode", false, "Turn on development mode (local data, mock commands)")
 }
