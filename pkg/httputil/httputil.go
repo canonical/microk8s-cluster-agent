@@ -1,4 +1,4 @@
-package server
+package httputil
 
 import (
 	"encoding/json"
@@ -21,15 +21,15 @@ type httpError struct {
 	Error string `json:"error"`
 }
 
-// HTTPError creates an HTTP response to handle errors.
-func HTTPError(w http.ResponseWriter, status int, err error) {
+// Error creates an HTTP response to handle errors.
+func Error(w http.ResponseWriter, status int, err error) {
 	w.WriteHeader(status)
-	HTTPResponse(w, &httpError{Error: err.Error()})
+	Response(w, &httpError{Error: err.Error()})
 	log.Printf("[ERROR %d] %q\n", status, err)
 }
 
-// HTTPResponse creates an HTTP response for successful calls.
-func HTTPResponse(w http.ResponseWriter, v interface{}) {
+// Response creates an HTTP response for successful calls.
+func Response(w http.ResponseWriter, v interface{}) {
 	b, err := json.Marshal(v)
 	if err == nil {
 		w.Write(b)
