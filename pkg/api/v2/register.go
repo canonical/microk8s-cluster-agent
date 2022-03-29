@@ -27,9 +27,9 @@ func (a *API) RegisterServer(server *http.ServeMux, middleware func(f http.Handl
 		req.RemoteAddress = r.RemoteAddr
 		req.HostPort = r.Host
 
-		response, err := a.Join(r.Context(), req)
+		response, rc, err := a.Join(r.Context(), req)
 		if err != nil {
-			httputil.Error(w, http.StatusInternalServerError, err)
+			httputil.Error(w, rc, err)
 			return
 		}
 		httputil.Response(w, response)

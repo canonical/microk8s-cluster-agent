@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"strings"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
@@ -75,43 +76,44 @@ type JoinResponse struct {
 }
 
 // Join implements "POST v2/join".
-func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, error) {
+// Join returns the join response on success, otherwise an error and the HTTP status code.
+func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, error) {
 	if !util.IsValidClusterToken(req.ClusterToken) {
-		return nil, fmt.Errorf("invalid cluster token")
+		return nil, http.StatusInternalServerError, fmt.Errorf("invalid cluster token")
 	}
 	if err := util.RemoveClusterToken(req.ClusterToken); err != nil {
-		return nil, fmt.Errorf("failed to remove cluster token: %w", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to remove cluster token: %w", err)
 	}
 	if !util.HasDqliteLock() {
-		return nil, fmt.Errorf("failed to join the cluster: this is not an HA MicroK8s cluster")
+		return nil, http.StatusNotImplemented, fmt.Errorf("not possible to join: this is not an HA MicroK8s cluster")
 	}
 
 	// Check cluster agent ports.
 	clusterAgentBind := util.GetServiceArgument("cluster-agent", "--bind")
 	_, port, _ := net.SplitHostPort(clusterAgentBind)
 	if port != req.ClusterAgentPort {
-		return nil, fmt.Errorf("cluster agent port needs to be set to %s", port)
+		return nil, http.StatusBadGateway, fmt.Errorf("cluster agent port needs to be set to %s", port)
 	}
 
 	// Prevent joins in the same node.
 	remoteIP, _, _ := net.SplitHostPort(req.RemoteAddress)
 	if hostIP, _, _ := net.SplitHostPort(req.HostPort); remoteIP == hostIP {
-		return nil, fmt.Errorf("the joining node has the same IP (%s) as the node we contact", hostIP)
+		return nil, http.StatusServiceUnavailable, fmt.Errorf("the joining node has the same IP (%s) as the node we contact", hostIP)
 	}
 
 	// Check that hostname resolves to the expected IP address
 	if util.GetRemoteHost(a.LookupIP, req.RemoteHostName, req.RemoteAddress) != req.RemoteHostName {
-		return nil, fmt.Errorf("the hostname %q does not resolve to the IP %q. refusing join", req.RemoteHostName, remoteIP)
+		return nil, http.StatusBadRequest, fmt.Errorf("the hostname %q does not resolve to the IP %q. refusing join", req.RemoteHostName, remoteIP)
 	}
 
 	// Check node is not in cluster already.
 	dqliteCluster, err := util.GetDqliteCluster()
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve dqlite cluster nodes: %w", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster nodes: %w", err)
 	}
 	for _, node := range dqliteCluster {
 		if strings.HasPrefix(node.Address, remoteIP+":") {
-			return nil, fmt.Errorf("joining node %q is already known to dqlite", remoteIP)
+			return nil, http.StatusGatewayTimeout, fmt.Errorf("joining node %q is already known to dqlite", remoteIP)
 		}
 	}
 
@@ -119,7 +121,7 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, error) 
 	if len(dqliteCluster) == 1 && strings.HasPrefix(dqliteCluster[0].Address, "127.0.0.1:") {
 		requestHost, _, _ := net.SplitHostPort(req.HostPort)
 		if err := util.UpdateDqliteIP(ctx, requestHost); err != nil {
-			return nil, fmt.Errorf("failed to update dqlite address to %q: %w", requestHost, err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update dqlite address to %q: %w", requestHost, err)
 		}
 
 		// Wait for dqlite cluster to come up with new address
@@ -127,30 +129,30 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, error) 
 			return len(c) >= 1 && !strings.HasPrefix(c[0].Address, "127.0.0.1:"), nil
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed waiting for dqlite cluster to come up: %w", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed waiting for dqlite cluster to come up: %w", err)
 		}
 	}
 
 	callbackToken, err := util.GetOrCreateSelfCallbackToken()
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve self callback token: %w", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("could not retrieve self callback token: %w", err)
 	}
 
 	ca, err := util.ReadFile(util.SnapDataPath("certs", "ca.crt"))
 	if err != nil {
-		return nil, fmt.Errorf("failed reading cluster CA: %w", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed reading cluster CA: %w", err)
 	}
 	kubeletArgs, err := util.ReadFile(util.SnapDataPath("args", "kubelet"))
 	if err != nil {
-		return nil, fmt.Errorf("failed to read arguments of kubelet service: %w", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to read arguments of kubelet service: %w", err)
 	}
 
 	if err := util.MaybePatchCalicoAutoDetectionMethod(ctx, remoteIP, true); err != nil {
-		return nil, fmt.Errorf("failed to update cni configuration: %w", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update cni configuration: %w", err)
 	}
 
 	if err := util.CreateNoCertsReissueLock(); err != nil {
-		return nil, fmt.Errorf("failed to create lock file to disable certificate reissuing: %w", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create lock file to disable certificate reissuing: %w", err)
 	}
 	response := &JoinResponse{
 		CertificateAuthority:       ca,
@@ -163,38 +165,38 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, error) 
 
 	if req.WorkerOnly {
 		if err := util.AddCertificateRequestToken(fmt.Sprintf("%s-kubelet", req.ClusterToken)); err != nil {
-			return nil, fmt.Errorf("failed adding certificate request token for kubelet: %w", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed adding certificate request token for kubelet: %w", err)
 		}
 		if err := util.AddCertificateRequestToken(fmt.Sprintf("%s-proxy", req.ClusterToken)); err != nil {
-			return nil, fmt.Errorf("failed adding certificate request token for kube-proxy: %w", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed adding certificate request token for kube-proxy: %w", err)
 		}
 
 		controlPlaneNodes, err := a.ListControlPlaneNodeIPs(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve list of control plane nodes: %w", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve list of control plane nodes: %w", err)
 		}
 		response.ControlPlaneNodes = controlPlaneNodes
 	} else {
 		caKey, err := util.ReadFile(util.SnapDataPath("certs", "ca.key"))
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve cluster CA key: %w", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve cluster CA key: %w", err)
 		}
 		response.CertificateAuthorityKey = &caKey
 		response.ServiceAccountKey, err = util.ReadFile(util.SnapDataPath("certs", "serviceaccount.key"))
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve service account key: %w", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve service account key: %w", err)
 		}
 		response.AdminToken, err = util.GetKnownToken("admin")
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve token for admin user: %w", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve token for admin user: %w", err)
 		}
 		response.DqliteClusterCertificate, err = util.ReadFile(util.SnapDataPath("var", "kubernetes", "backend", "cluster.crt"))
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve dqlite cluster certificate: %w", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster certificate: %w", err)
 		}
 		response.DqliteClusterKey, err = util.ReadFile(util.SnapDataPath("var", "kubernetes", "backend", "cluster.key"))
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve dqlite cluster key: %w", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster key: %w", err)
 		}
 		voters := make([]string, 0, len(dqliteCluster))
 		for _, node := range dqliteCluster {
@@ -205,5 +207,5 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, error) 
 		response.DqliteVoterNodes = voters
 	}
 
-	return response, nil
+	return response, http.StatusOK, nil
 }

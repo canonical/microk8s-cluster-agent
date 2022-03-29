@@ -73,7 +73,7 @@ admin-token-123,admin,admin,"system:masters"
 	defer os.RemoveAll("testdata/var")
 
 	t.Run("InvalidToken", func(t *testing.T) {
-		resp, err := apiv2.Join(context.Background(), v2.JoinRequest{ClusterToken: "invalid-token"})
+		resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{ClusterToken: "invalid-token"})
 		if err == nil {
 			t.Fatalf("Expected error but did not receive any")
 		}
@@ -86,7 +86,7 @@ admin-token-123,admin,admin,"system:masters"
 		m := &utiltest.MockRunner{}
 		utiltest.WithMockRunner(m, func(t *testing.T) {
 
-			resp, err := apiv2.Join(context.Background(), v2.JoinRequest{
+			resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{
 				ClusterToken:     "control-plane-token",
 				RemoteHostName:   "test-control-plane",
 				ClusterAgentPort: "25000",
@@ -137,7 +137,7 @@ admin-token-123,admin,admin,"system:masters"
 	t.Run("Worker", func(t *testing.T) {
 		m := &utiltest.MockRunner{}
 		utiltest.WithMockRunner(m, func(t *testing.T) {
-			resp, err := apiv2.Join(context.Background(), v2.JoinRequest{
+			resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{
 				ClusterToken:     "worker-token",
 				RemoteHostName:   "test-worker",
 				RemoteAddress:    "10.10.10.12:31451",
@@ -247,7 +247,7 @@ admin-token-123,admin,admin,"system:masters"
 			}
 		}()
 
-		resp, err := apiv2.Join(context.Background(), v2.JoinRequest{
+		resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{
 			ClusterToken:     "control-plane-token",
 			RemoteHostName:   "test-worker-nohostname",
 			ClusterAgentPort: "25000",
