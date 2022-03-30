@@ -1,10 +1,11 @@
-package util
+package snaputil
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
+
+	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 )
 
 // MaybePatchCalicoAutoDetectionMethod attempts to update the calico cni.yaml to
@@ -15,21 +16,20 @@ import (
 // to mitigate issues with multiple NICs.
 //
 // Optionally, the new manifest may be applied using the microk8s-kubectl.wrapper script.
-func MaybePatchCalicoAutoDetectionMethod(ctx context.Context, canReachHost string, apply bool) error {
-	cniYamlPath := SnapDataPath("args", "cni-network", "cni.yaml")
-	config, err := ReadFile(cniYamlPath)
+func MaybePatchCalicoAutoDetectionMethod(ctx context.Context, s snap.Snap, canReachHost string, apply bool) error {
+	config, err := s.ReadCNIYaml()
 	if err != nil {
 		return fmt.Errorf("failed to read existing cni configuration: %w", err)
 	}
 	newConfig := strings.ReplaceAll(config, `"first-found"`, fmt.Sprintf(`"can-reach=%s"`, canReachHost))
 	if newConfig != config {
-		if err := os.WriteFile(cniYamlPath, []byte(newConfig), 0660); err != nil {
+		if err := s.WriteCNIYaml([]byte(newConfig)); err != nil {
 			return fmt.Errorf("failed to update cni configuration: %w", err)
 		}
 	}
 	if apply {
-		if err := RunCommand(ctx, SnapPath("microk8s-kubectl.wrapper"), "apply", "-f", cniYamlPath); err != nil {
-			return fmt.Errorf("failed to apply new cni configuration: %w", err)
+		if err := s.ApplyCNI(ctx); err != nil {
+			return fmt.Errorf("failed to apply cni configuration: %w", err)
 		}
 	}
 	return nil
