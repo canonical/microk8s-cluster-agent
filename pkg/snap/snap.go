@@ -2,8 +2,10 @@ package snap
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 	"gopkg.in/yaml.v2"
