@@ -20,7 +20,7 @@ type Snap struct {
 
 	DqliteClusterYaml               string
 	DqliteInfoYaml                  string
-	WriteDqliteUpdateYamlCalledWith [][]byte
+	WriteDqliteUpdateYamlCalledWith []string
 
 	KubeconfigFile string
 
@@ -86,7 +86,7 @@ func (s *Snap) ReadDqliteClusterYaml() (string, error) {
 }
 
 func (s *Snap) WriteDqliteUpdateYaml(b []byte) error {
-	s.WriteDqliteUpdateYamlCalledWith = append(s.WriteDqliteUpdateYamlCalledWith, b)
+	s.WriteDqliteUpdateYamlCalledWith = append(s.WriteDqliteUpdateYamlCalledWith, string(b))
 	return nil
 }
 

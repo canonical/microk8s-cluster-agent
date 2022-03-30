@@ -1,12 +1,12 @@
-package util
+package snaputil
 
 import (
 	"context"
 	"fmt"
 	"net"
-	"os"
 	"time"
 
+	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	"gopkg.in/yaml.v2"
 )
 
@@ -27,14 +27,14 @@ type DqliteClusterNode struct {
 }
 
 // GetDqliteCluster a list of all currently known dqlite cluster nodes.
-func GetDqliteCluster() (DqliteCluster, error) {
-	s, err := ReadFile(SnapDataPath("var", "kubernetes", "backend", "cluster.yaml"))
+func GetDqliteCluster(s snap.Snap) (DqliteCluster, error) {
+	clusterYaml, err := s.ReadDqliteClusterYaml()
 	if err != nil {
 		return DqliteCluster{}, fmt.Errorf("failed to read list of dqlite nodes: %w", err)
 	}
 
 	cluster := DqliteCluster{}
-	if err := yaml.Unmarshal([]byte(s), &cluster); err != nil {
+	if err := yaml.Unmarshal([]byte(clusterYaml), &cluster); err != nil {
 		return DqliteCluster{}, fmt.Errorf("failed to parse list of dqlite nodes: %w", err)
 	}
 
@@ -42,13 +42,13 @@ func GetDqliteCluster() (DqliteCluster, error) {
 }
 
 // UpdateDqliteIP sets the local dqlite cluster node to bind to a new IP address.
-func UpdateDqliteIP(ctx context.Context, host string) error {
-	s, err := ReadFile(SnapDataPath("var", "kubernetes", "backend", "info.yaml"))
+func UpdateDqliteIP(ctx context.Context, s snap.Snap, host string) error {
+	infoYaml, err := s.ReadDqliteInfoYaml()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve current node info: %w", err)
 	}
 	var node DqliteClusterNode
-	if err := yaml.Unmarshal([]byte(s), &node); err != nil {
+	if err := yaml.Unmarshal([]byte(infoYaml), &node); err != nil {
 		return fmt.Errorf("invalid format for current node info: %w", err)
 	}
 
@@ -61,21 +61,21 @@ func UpdateDqliteIP(ctx context.Context, host string) error {
 		return fmt.Errorf("failed to marshal current node info update: %w", err)
 	}
 
-	if err := os.WriteFile(SnapDataPath("var", "kubernetes", "backend", "update.yaml"), b, 0660); err != nil {
+	if err := s.WriteDqliteUpdateYaml(b); err != nil {
 		return fmt.Errorf("failed to create dqlite update file: %w", err)
 	}
 
-	if err := RestartService(ctx, "k8s-dqlite"); err != nil {
+	if err := s.RestartService(ctx, "k8s-dqlite"); err != nil {
 		return fmt.Errorf("failed to restart k8s-dqlite service: %w", err)
 	}
 	return nil
 }
 
 // WaitForDqliteCluster queries the dqlite cluster nodes repeatedly until f(cluster) becomes true.
-func WaitForDqliteCluster(ctx context.Context, f func(DqliteCluster) (bool, error)) (DqliteCluster, error) {
+func WaitForDqliteCluster(ctx context.Context, s snap.Snap, f func(DqliteCluster) (bool, error)) (DqliteCluster, error) {
 	interval := time.NewTicker(time.Second)
 	for {
-		cluster, err := GetDqliteCluster()
+		cluster, err := GetDqliteCluster(s)
 		if err != nil {
 			return DqliteCluster{}, err
 		}
