@@ -52,8 +52,27 @@ func (s *snap) IsStrict() bool {
 	return meta.Confinement == "strict"
 }
 
+// snapctlServiceName infers the name of the snapctl daemon from the service name.
+func snapctlServiceName(serviceName string, hasKubelite bool) string {
+	switch serviceName {
+	case "kube-apiserver", "kube-proxy", "kube-scheduler", "kube-controller-manager":
+		// drop kube- prefix
+		serviceName = serviceName[5:]
+	}
+	if hasKubelite {
+		switch serviceName {
+		case "apiserver", "proxy", "kubelet", "scheduler", "controller-manager":
+			serviceName = "kubelite"
+		}
+	}
+	if strings.HasPrefix(serviceName, "microk8s.daemon-") {
+		return serviceName
+	}
+	return fmt.Sprintf("microk8s.daemon-%s", serviceName)
+}
+
 func (s *snap) RestartService(ctx context.Context, serviceName string) error {
-	return s.runCommand(ctx, "snapctl", "restart", serviceName)
+	return s.runCommand(ctx, "snapctl", "restart", snapctlServiceName(serviceName, s.HasKubeliteLock()))
 }
 
 func (s *snap) ReadCA() (string, error) {

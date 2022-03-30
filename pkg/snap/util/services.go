@@ -1,47 +1,17 @@
-package util
+package snaputil
 
 import (
-	"context"
 	"fmt"
-	"os"
 	"strings"
+
+	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 )
-
-func service(ctx context.Context, action, serviceName string) error {
-	switch serviceName {
-	case "kube-apiserver", "kube-proxy", "kube-scheduler", "kube-controller-manager":
-		// drop kube- prefix
-		serviceName = serviceName[5:]
-	}
-	if HasKubeliteLock() {
-		switch serviceName {
-		case "apiserver", "proxy", "kubelet", "scheduler", "controller-manager":
-			serviceName = "kubelite"
-		}
-	}
-	return RunCommand(ctx, "snapctl", action, fmt.Sprintf("microk8s.daemon-%s", serviceName))
-}
-
-// RestartService restarts a MicroK8s service, handling the case where the MicroK8s cluster is running Kubelite.
-func RestartService(ctx context.Context, serviceName string) error {
-	return service(ctx, "restart", serviceName)
-}
-
-// StopService stops a MicroK8s service, handling the case where the MicroK8s cluster is running Kubelite.
-func StopService(ctx context.Context, serviceName string) error {
-	return service(ctx, "stop", serviceName)
-}
-
-// StartService starts a MicroK8s service, handling the case where the MicroK8s cluster is running Kubelite.
-func StartService(ctx context.Context, serviceName string) error {
-	return service(ctx, "start", serviceName)
-}
 
 // GetServiceArgument retrieves the value of a specific argument from the $SNAP_DATA/args/$service file.
 // The argument name should include preceding dashes (e.g. "--secure-port").
 // If any errors occur, or the argument is not present, an empty string is returned.
-func GetServiceArgument(serviceName string, argument string) string {
-	arguments, err := ReadFile(SnapDataPath("args", serviceName))
+func GetServiceArgument(s snap.Snap, serviceName string, argument string) string {
+	arguments, err := s.ReadServiceArguments(serviceName)
 	if err != nil {
 		return ""
 	}
@@ -63,7 +33,7 @@ func GetServiceArgument(serviceName string, argument string) string {
 // UpdateServiceArguments is a no-op if updateList and delete are empty.
 // updateList is a map of key-value pairs. It will replace the argument with the new value (or just append).
 // delete is a list of arguments to remove completely. The argument is removed if present.
-func UpdateServiceArguments(serviceName string, updateList []map[string]string, delete []string) error {
+func UpdateServiceArguments(s snap.Snap, serviceName string, updateList []map[string]string, delete []string) error {
 	if updateList == nil {
 		updateList = []map[string]string{}
 	}
@@ -88,8 +58,7 @@ func UpdateServiceArguments(serviceName string, updateList []map[string]string, 
 		}
 	}
 
-	argumentsFile := SnapDataPath("args", serviceName)
-	arguments, err := ReadFile(argumentsFile)
+	arguments, err := s.ReadServiceArguments(serviceName)
 	if err != nil {
 		return fmt.Errorf("failed to read arguments of service %s: %w", serviceName, err)
 	}
@@ -116,7 +85,7 @@ func UpdateServiceArguments(serviceName string, updateList []map[string]string, 
 		}
 	}
 
-	if err := os.WriteFile(argumentsFile, []byte((strings.Join(newArguments, "\n") + "\n")), 0660); err != nil {
+	if err := s.WriteServiceArguments(serviceName, []byte(strings.Join(newArguments, "\n")+"\n")); err != nil {
 		return fmt.Errorf("failed to update arguments for service %s: %q", serviceName, err)
 	}
 	return nil
