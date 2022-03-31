@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/canonical/microk8s-cluster-agent/pkg/util"
+	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
 )
 
 // ConfigureServiceRequest is a configuration request for MicroK8s.
@@ -43,15 +43,15 @@ type ConfigureRequest struct {
 
 // Configure implements "POST /CLUSTER_API_V1/configure".
 func (a *API) Configure(ctx context.Context, req ConfigureRequest) error {
-	if !util.IsValidSelfCallbackToken(req.CallbackToken) {
+	if !a.Snap.IsValidSelfCallbackToken(req.CallbackToken) {
 		return fmt.Errorf("invalid callback token")
 	}
 	for _, service := range req.ConfigureServices {
-		if err := util.UpdateServiceArguments(service.Name, service.UpdateArguments, service.RemoveArguments); err != nil {
+		if err := snaputil.UpdateServiceArguments(a.Snap, service.Name, service.UpdateArguments, service.RemoveArguments); err != nil {
 			return fmt.Errorf("failed to update arguments of service %q: %w", service.Name, err)
 		}
 		if service.Restart {
-			if err := util.RestartService(ctx, service.Name); err != nil {
+			if err := a.Snap.RestartService(ctx, service.Name); err != nil {
 				return fmt.Errorf("failed to restart service %q: %w", service.Name, err)
 			}
 		}
@@ -60,11 +60,11 @@ func (a *API) Configure(ctx context.Context, req ConfigureRequest) error {
 	for _, addon := range req.ConfigureAddons {
 		switch {
 		case addon.Enable:
-			if err := util.RunCommand(ctx, util.SnapPath("microk8s-enable.wrapper"), addon.Name); err != nil {
+			if err := a.Snap.EnableAddon(ctx, addon.Name); err != nil {
 				return fmt.Errorf("failed to enable addon %q: %w", addon.Name, err)
 			}
 		case addon.Disable:
-			if err := util.RunCommand(ctx, util.SnapPath("microk8s-disable.wrapper"), addon.Name); err != nil {
+			if err := a.Snap.DisableAddon(ctx, addon.Name); err != nil {
 				return fmt.Errorf("failed to disable addon %q: %w", addon.Name, err)
 			}
 		}

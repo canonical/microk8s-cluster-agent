@@ -1,9 +1,13 @@
 package v2_test
 
-import "context"
+import (
+	"context"
 
-func mockListControlPlaneNodes(nodes ...string) func(ctx context.Context) ([]string, error) {
-	return func(ctx context.Context) ([]string, error) {
+	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
+)
+
+func mockListControlPlaneNodes(nodes ...string) func(context.Context, snap.Snap) ([]string, error) {
+	return func(context.Context, snap.Snap) ([]string, error) {
 		return nodes, nil
 	}
 }

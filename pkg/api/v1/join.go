@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 
+	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 )
 
@@ -43,56 +44,56 @@ type JoinResponse struct {
 
 // Join implements "POST /CLUSTER_API_V1/join".
 func (a *API) Join(ctx context.Context, request JoinRequest) (*JoinResponse, error) {
-	if !util.IsValidClusterToken(request.ClusterToken) {
+	if !a.Snap.IsValidClusterToken(request.ClusterToken) {
 		return nil, fmt.Errorf("invalid cluster token")
 	}
-	if err := util.RemoveClusterToken(request.ClusterToken); err != nil {
+	if err := a.Snap.RemoveClusterToken(request.ClusterToken); err != nil {
 		return nil, fmt.Errorf("failed to remove cluster token: %w", err)
 	}
 
-	if util.HasDqliteLock() {
+	if a.Snap.HasDqliteLock() {
 		return nil, fmt.Errorf("failed to join the cluster: this is an HA MicroK8s cluster, run 'microk8s enable ha-cluster' on the joining node and retry")
 	}
 
-	if err := util.AddCertificateRequestToken(request.ClusterToken); err != nil {
+	if err := a.Snap.AddCertificateRequestToken(request.ClusterToken); err != nil {
 		return nil, fmt.Errorf("failed to add certificate request token: %w", err)
 	}
 	hostname := util.GetRemoteHost(a.LookupIP, request.HostName, request.RemoteAddress)
 	clusterAgentEndpoint := net.JoinHostPort(hostname, request.ClusterAgentPort)
 
-	if err := util.AddCallbackToken(clusterAgentEndpoint, request.CallbackToken); err != nil {
+	if err := a.Snap.AddCallbackToken(clusterAgentEndpoint, request.CallbackToken); err != nil {
 		return nil, fmt.Errorf("failed to add callback token for %s: %w", clusterAgentEndpoint, err)
 	}
 
-	ca, err := util.ReadFile(util.SnapDataPath("certs", "ca.crt"))
+	ca, err := a.Snap.ReadCA()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read cluster CA: %w", err)
 	}
-	kubeProxyToken, err := util.GetKnownToken("system:kube-proxy")
+	kubeProxyToken, err := a.Snap.GetKnownToken("system:kube-proxy")
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve kube-proxy token: %w", err)
 	}
-	kubeletToken, err := util.GetOrCreateKubeletToken(hostname)
+	kubeletToken, err := a.Snap.GetOrCreateKubeletToken(hostname)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve kubelet token: %w", err)
 	}
-	if err := util.RestartService(ctx, "apiserver"); err != nil {
+	if err := a.Snap.RestartService(ctx, "apiserver"); err != nil {
 		return nil, fmt.Errorf("failed to restart apiserver service: %w", err)
 	}
-	kubeletArgs, err := util.ReadFile(util.SnapDataPath("args", "kubelet"))
+	kubeletArgs, err := a.Snap.ReadServiceArguments("kubelet")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read arguments of kubelet service: %w", err)
 	}
 	if hostname != request.HostName {
 		kubeletArgs = fmt.Sprintf("%s\n--hostname-override=%s", kubeletArgs, hostname)
 	}
-	if err := util.CreateNoCertsReissueLock(); err != nil {
+	if err := a.Snap.CreateNoCertsReissueLock(); err != nil {
 		return nil, fmt.Errorf("failed to create lock file to disable certificate reissuing: %w", err)
 	}
 	return &JoinResponse{
 		CertificateAuthority: ca,
-		EtcdEndpoint:         util.GetServiceArgument("etcd", "--listen-client-urls"),
-		APIServerPort:        util.GetServiceArgument("kube-apiserver", "--secure-port"),
+		EtcdEndpoint:         snaputil.GetServiceArgument(a.Snap, "etcd", "--listen-client-urls"),
+		APIServerPort:        snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--secure-port"),
 		KubeProxyToken:       kubeProxyToken,
 		KubeletToken:         kubeletToken,
 		KubeletArgs:          kubeletArgs,

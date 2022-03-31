@@ -3,8 +3,6 @@ package v1
 import (
 	"context"
 	"fmt"
-
-	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 )
 
 // SignCertRequest is the request message for the sign-cert endpoint.
@@ -23,16 +21,16 @@ type SignCertResponse struct {
 
 // SignCert implements "POST CLUSTER_API_V1/sign-cert".
 func (a *API) SignCert(ctx context.Context, req SignCertRequest) (*SignCertResponse, error) {
-	if !util.IsValidCertificateRequestToken(req.Token) {
+	if !a.Snap.IsValidCertificateRequestToken(req.Token) {
 		return nil, fmt.Errorf("invalid certificate request token")
 	}
-	if err := util.RemoveCertificateRequestToken(req.Token); err != nil {
+	if err := a.Snap.RemoveCertificateRequestToken(req.Token); err != nil {
 		return nil, fmt.Errorf("failed to remove certificate request token: %w", err)
 	}
 
-	cert, err := util.SignCertificate(ctx, req.CertificateSigningRequest)
+	cert, err := a.Snap.SignCertificate(ctx, []byte(req.CertificateSigningRequest))
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign certificate: %w", err)
 	}
-	return &SignCertResponse{Certificate: cert}, nil
+	return &SignCertResponse{Certificate: string(cert)}, nil
 }

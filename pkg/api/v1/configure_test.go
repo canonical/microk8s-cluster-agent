@@ -2,55 +2,44 @@ package v1_test
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"reflect"
 	"testing"
 
 	v1 "github.com/canonical/microk8s-cluster-agent/pkg/api/v1"
-	"github.com/canonical/microk8s-cluster-agent/pkg/util"
-	utiltest "github.com/canonical/microk8s-cluster-agent/pkg/util/test"
+	"github.com/canonical/microk8s-cluster-agent/pkg/snap/mock"
+	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
 )
 
 func TestConfigure(t *testing.T) {
-	for file, contents := range map[string]string{
-		"testdata/args/kube-apiserver":            "--key=value\n--old=to-remove",
-		"testdata/args/kube-proxy":                "--key=value2",
-		"testdata/credentials/callback-token.txt": "valid-token",
-	} {
-		if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
-			t.Fatalf("Failed to create test directory: %s", err)
-		}
-		if err := os.WriteFile(file, []byte(contents), 0660); err != nil {
-			t.Fatalf("Failed to create test file: %s", err)
-		}
-		defer os.RemoveAll(filepath.Dir(file))
+	s := &mock.Snap{
+		SelfCallbackTokens: []string{"valid-token"},
+		ServiceArguments: map[string]string{
+			"kube-apiserver": "--key=value\n--old=to-remove",
+			"kube-proxy":     "--key=value2",
+		},
 	}
-
-	apiv1 := &v1.API{}
-
-	m := &utiltest.MockRunner{}
-	utiltest.WithMockRunner(m, func(t *testing.T) {
-		t.Run("InvalidToken", func(t *testing.T) {
-			err := apiv1.Configure(context.Background(), v1.ConfigureRequest{
-				CallbackToken: "invalid-token",
-				ConfigureServices: []v1.ConfigureServiceRequest{
-					{Name: "kube-apiserver", Restart: true},
-				},
-			})
-			if err == nil {
-				t.Fatal("Expected an error but did not receive any")
-			}
-			if len(m.CalledWithCommand) > 0 {
-				t.Fatalf("Expected no commands to be called, but received %#v", m.CalledWithCommand)
-			}
+	apiv1 := &v1.API{Snap: s}
+	t.Run("InvalidToken", func(t *testing.T) {
+		err := apiv1.Configure(context.Background(), v1.ConfigureRequest{
+			CallbackToken: "invalid-token",
+			ConfigureServices: []v1.ConfigureServiceRequest{
+				{Name: "kube-apiserver", Restart: true},
+			},
 		})
-	})(t)
+		if err == nil {
+			t.Fatal("Expected an error but did not receive any")
+		}
+		if s.WriteServiceArgumentsCalled {
+			t.Fatalf("Expected WriteServiceArguments to not be called, but it was")
+		}
+	})
 
 	for _, tc := range []struct {
 		name              string
 		req               v1.ConfigureRequest
-		expectedCommands  []string
+		expectedRestart   []string
+		expectedEnable    []string
+		expectedDisable   []string
 		expectedArguments map[string]map[string]string
 	}{
 		{
@@ -67,11 +56,9 @@ func TestConfigure(t *testing.T) {
 					{Name: "other"},
 				},
 			},
-			expectedCommands: []string{
-				"snapctl restart microk8s.daemon-proxy",
-				"testdata/microk8s-enable.wrapper dns",
-				"testdata/microk8s-disable.wrapper ingress",
-			},
+			expectedRestart: []string{"kube-proxy"},
+			expectedEnable:  []string{"dns"},
+			expectedDisable: []string{"ingress"},
 			expectedArguments: map[string]map[string]string{
 				"kube-apiserver": {
 					"--key": "new-value",
@@ -81,22 +68,26 @@ func TestConfigure(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			m := &utiltest.MockRunner{}
-			utiltest.WithMockRunner(m, func(t *testing.T) {
-				if err := apiv1.Configure(context.Background(), tc.req); err != nil {
-					t.Fatalf("Expected no errors but received %q", err)
-				}
-				for serviceName, expectedArguments := range tc.expectedArguments {
-					for key, expectedValue := range expectedArguments {
-						if value := util.GetServiceArgument(serviceName, key); value != expectedValue {
-							t.Fatalf("Expected argument %q of service %q to be %q, but it is %q", key, serviceName, expectedValue, value)
-						}
+			if err := apiv1.Configure(context.Background(), tc.req); err != nil {
+				t.Fatalf("Expected no errors but received %q", err)
+			}
+			for serviceName, expectedArguments := range tc.expectedArguments {
+				for key, expectedValue := range expectedArguments {
+					if value := snaputil.GetServiceArgument(s, serviceName, key); value != expectedValue {
+						t.Fatalf("Expected argument %q of service %q to be %q, but it is %q", key, serviceName, expectedValue, value)
 					}
 				}
-				if !reflect.DeepEqual(tc.expectedCommands, m.CalledWithCommand) {
-					t.Fatalf("Expected commands %#v but %#v was executed instead", tc.expectedCommands, m.CalledWithCommand)
-				}
-			})(t)
+			}
+
+			if !reflect.DeepEqual(tc.expectedDisable, s.DisableAddonCalledWith) {
+				t.Fatalf("Expected disable addons %#v but received %#v", tc.expectedDisable, s.DisableAddonCalledWith)
+			}
+			if !reflect.DeepEqual(tc.expectedEnable, s.EnableAddonCalledWith) {
+				t.Fatalf("Expected enable addons %#v but received %#v", tc.expectedEnable, s.EnableAddonCalledWith)
+			}
+			if !reflect.DeepEqual(tc.expectedRestart, s.RestartServiceCalledWith) {
+				t.Fatalf("Expected restart services %#v but received %#v", tc.expectedRestart, s.RestartServiceCalledWith)
+			}
 		})
 	}
 }

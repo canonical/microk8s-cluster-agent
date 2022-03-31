@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 )
 
@@ -78,18 +79,18 @@ type JoinResponse struct {
 // Join implements "POST v2/join".
 // Join returns the join response on success, otherwise an error and the HTTP status code.
 func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, error) {
-	if !util.IsValidClusterToken(req.ClusterToken) {
+	if !a.Snap.IsValidClusterToken(req.ClusterToken) {
 		return nil, http.StatusInternalServerError, fmt.Errorf("invalid cluster token")
 	}
-	if err := util.RemoveClusterToken(req.ClusterToken); err != nil {
+	if err := a.Snap.RemoveClusterToken(req.ClusterToken); err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to remove cluster token: %w", err)
 	}
-	if !util.HasDqliteLock() {
+	if !a.Snap.HasDqliteLock() {
 		return nil, http.StatusNotImplemented, fmt.Errorf("not possible to join: this is not an HA MicroK8s cluster")
 	}
 
 	// Check cluster agent ports.
-	clusterAgentBind := util.GetServiceArgument("cluster-agent", "--bind")
+	clusterAgentBind := snaputil.GetServiceArgument(a.Snap, "cluster-agent", "--bind")
 	_, port, _ := net.SplitHostPort(clusterAgentBind)
 	if port != req.ClusterAgentPort {
 		return nil, http.StatusBadGateway, fmt.Errorf("cluster agent port needs to be set to %s", port)
@@ -107,7 +108,7 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 	}
 
 	// Check node is not in cluster already.
-	dqliteCluster, err := util.GetDqliteCluster()
+	dqliteCluster, err := snaputil.GetDqliteCluster(a.Snap)
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster nodes: %w", err)
 	}
@@ -120,12 +121,12 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 	// Update dqlite cluster if needed
 	if len(dqliteCluster) == 1 && strings.HasPrefix(dqliteCluster[0].Address, "127.0.0.1:") {
 		requestHost, _, _ := net.SplitHostPort(req.HostPort)
-		if err := util.UpdateDqliteIP(ctx, requestHost); err != nil {
+		if err := snaputil.UpdateDqliteIP(ctx, a.Snap, requestHost); err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update dqlite address to %q: %w", requestHost, err)
 		}
 
 		// Wait for dqlite cluster to come up with new address
-		dqliteCluster, err = util.WaitForDqliteCluster(ctx, func(c util.DqliteCluster) (bool, error) {
+		dqliteCluster, err = snaputil.WaitForDqliteCluster(ctx, a.Snap, func(c snaputil.DqliteCluster) (bool, error) {
 			return len(c) >= 1 && !strings.HasPrefix(c[0].Address, "127.0.0.1:"), nil
 		})
 		if err != nil {
@@ -133,68 +134,68 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 		}
 	}
 
-	callbackToken, err := util.GetOrCreateSelfCallbackToken()
+	callbackToken, err := a.Snap.GetOrCreateSelfCallbackToken()
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("could not retrieve self callback token: %w", err)
 	}
 
-	ca, err := util.ReadFile(util.SnapDataPath("certs", "ca.crt"))
+	ca, err := a.Snap.ReadCA()
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed reading cluster CA: %w", err)
 	}
-	kubeletArgs, err := util.ReadFile(util.SnapDataPath("args", "kubelet"))
+	kubeletArgs, err := a.Snap.ReadServiceArguments("kubelet")
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to read arguments of kubelet service: %w", err)
 	}
 
-	if err := util.MaybePatchCalicoAutoDetectionMethod(ctx, remoteIP, true); err != nil {
+	if err := snaputil.MaybePatchCalicoAutoDetectionMethod(ctx, a.Snap, remoteIP, true); err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update cni configuration: %w", err)
 	}
 
-	if err := util.CreateNoCertsReissueLock(); err != nil {
+	if err := a.Snap.CreateNoCertsReissueLock(); err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create lock file to disable certificate reissuing: %w", err)
 	}
 	response := &JoinResponse{
 		CertificateAuthority:       ca,
 		CallbackToken:              callbackToken,
-		APIServerPort:              util.GetServiceArgument("kube-apiserver", "--secure-port"),
-		APIServerAuthorizationMode: util.GetServiceArgument("kube-apiserver", "--authorization-mode"),
+		APIServerPort:              snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--secure-port"),
+		APIServerAuthorizationMode: snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--authorization-mode"),
 		HostNameOverride:           remoteIP,
 		KubeletArgs:                kubeletArgs,
 	}
 
 	if req.WorkerOnly {
-		if err := util.AddCertificateRequestToken(fmt.Sprintf("%s-kubelet", req.ClusterToken)); err != nil {
+		if err := a.Snap.AddCertificateRequestToken(fmt.Sprintf("%s-kubelet", req.ClusterToken)); err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed adding certificate request token for kubelet: %w", err)
 		}
-		if err := util.AddCertificateRequestToken(fmt.Sprintf("%s-proxy", req.ClusterToken)); err != nil {
+		if err := a.Snap.AddCertificateRequestToken(fmt.Sprintf("%s-proxy", req.ClusterToken)); err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed adding certificate request token for kube-proxy: %w", err)
 		}
 
-		controlPlaneNodes, err := a.ListControlPlaneNodeIPs(ctx)
+		controlPlaneNodes, err := a.ListControlPlaneNodeIPs(ctx, a.Snap)
 		if err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve list of control plane nodes: %w", err)
 		}
 		response.ControlPlaneNodes = controlPlaneNodes
 	} else {
-		caKey, err := util.ReadFile(util.SnapDataPath("certs", "ca.key"))
+		caKey, err := a.Snap.ReadCAKey()
 		if err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve cluster CA key: %w", err)
 		}
 		response.CertificateAuthorityKey = &caKey
-		response.ServiceAccountKey, err = util.ReadFile(util.SnapDataPath("certs", "serviceaccount.key"))
+		response.ServiceAccountKey, err = a.Snap.ReadServiceAccountKey()
 		if err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve service account key: %w", err)
 		}
-		response.AdminToken, err = util.GetKnownToken("admin")
+		response.AdminToken, err = a.Snap.GetKnownToken("admin")
 		if err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve token for admin user: %w", err)
 		}
-		response.DqliteClusterCertificate, err = util.ReadFile(util.SnapDataPath("var", "kubernetes", "backend", "cluster.crt"))
+		response.DqliteClusterCertificate, err = a.Snap.ReadDqliteCert()
 		if err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster certificate: %w", err)
 		}
-		response.DqliteClusterKey, err = util.ReadFile(util.SnapDataPath("var", "kubernetes", "backend", "cluster.key"))
+		response.DqliteClusterKey, err = a.Snap.ReadDqliteKey()
 		if err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster key: %w", err)
 		}

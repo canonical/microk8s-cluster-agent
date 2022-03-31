@@ -10,12 +10,15 @@ import (
 	"time"
 )
 
+type RandomCharacters string
+
 const (
-	alpha  string = "abcdefghijklmnopqrstuvqxyzABCDEFGHIJKLMONPQRSTUVWXYZ1234567890"
-	digits string = "0123456789"
+	Alpha  RandomCharacters = "abcdefghijklmnopqrstuvqxyzABCDEFGHIJKLMONPQRSTUVWXYZ1234567890"
+	Digits RandomCharacters = "0123456789"
 )
 
-func newRandomString(letters string, length int) string {
+// NewRandomString creates a new cryptographically safe random string from a source of characters.
+func NewRandomString(letters RandomCharacters, length int) string {
 	maxInt := big.NewInt(int64(len(letters)))
 	s := make([]byte, length)
 	for i := range s {
@@ -29,7 +32,16 @@ func newRandomString(letters string, length int) string {
 	return string(s)
 }
 
-func isValidToken(token string, tokensFile string) bool {
+// IsValidToken checks tokensFile to see if token is valid.
+// A token is valid when it appears in the tokensFile.
+// A token may optionally have a TTL, which is appended at the end of the token.
+// For example, the tokens file may look like this:
+//
+//     token1
+//     token2 35616531876
+//
+// In the file above, token1 is a valid token. token2 is valid until the unix timestamp 35616531876.
+func IsValidToken(token string, tokensFile string) bool {
 	if token == "" {
 		return false
 	}
@@ -57,7 +69,9 @@ func isValidToken(token string, tokensFile string) bool {
 	return false
 }
 
-func appendToken(token string, tokensFile string) error {
+// AppendToken appends a token to a file.
+// Token files contain a single token in each line.
+func AppendToken(token string, tokensFile string) error {
 	f, err := os.OpenFile(tokensFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0660)
 	if err != nil {
 		return fmt.Errorf("failed to open %s: %w", tokensFile, err)
@@ -71,7 +85,10 @@ func appendToken(token string, tokensFile string) error {
 	return nil
 }
 
-func removeToken(token string, tokensFile string) error {
+// RemoveToken removes a token from a tokens file, if it exists.
+// Missing tokens do not cause errors.
+// Reading or writing back the token file will return an error.
+func RemoveToken(token string, tokensFile string) error {
 	b, err := os.ReadFile(tokensFile)
 	if err != nil {
 		return fmt.Errorf("failed to read %s: %w", tokensFile, err)
@@ -95,93 +112,4 @@ func removeToken(token string, tokensFile string) error {
 	// TODO: consider whether permissions should be 0600 instead
 	SetupPermissions(tokensFile)
 	return nil
-}
-
-// IsValidClusterToken checks whether a token is a valid MicroK8s cluster token.
-func IsValidClusterToken(token string) bool {
-	return isValidToken(token, SnapDataPath("credentials", "cluster-tokens.txt"))
-}
-
-// IsValidCertificateRequestToken checks whether a token is a valid MicroK8s certificate request token.
-func IsValidCertificateRequestToken(token string) bool {
-	return isValidToken(token, SnapDataPath("credentials", "certs-request-tokens.txt"))
-}
-
-// IsValidCallbackToken checks whether a token is a valid MicroK8s callback token.
-func IsValidCallbackToken(clusterAgentEndpoint, token string) bool {
-	return isValidToken(fmt.Sprintf("%s %s", clusterAgentEndpoint, token), SnapDataPath("credentials", "callback-tokens.txt"))
-}
-
-// IsValidSelfCallbackToken checks whether the supplied token is the callback token of the current MicroK8s node.
-func IsValidSelfCallbackToken(token string) bool {
-	return isValidToken(token, SnapDataPath("credentials", "callback-token.txt"))
-}
-
-// RemoveClusterToken removes a token from the known cluster tokens.
-func RemoveClusterToken(token string) error {
-	return removeToken(token, SnapDataPath("credentials", "cluster-tokens.txt"))
-}
-
-// RemoveCertificateRequestToken removes a token from the known certificate request tokens.
-func RemoveCertificateRequestToken(token string) error {
-	return removeToken(token, SnapDataPath("credentials", "certs-request-tokens.txt"))
-}
-
-// AddCertificateRequestToken appends a new token that can be used to issue a certificate signing request.
-func AddCertificateRequestToken(token string) error {
-	return appendToken(token, SnapDataPath("credentials", "certs-request-tokens.txt"))
-}
-
-// AddCallbackToken appends a new token that can be used to issue requests to a remote cluster agent.
-func AddCallbackToken(clusterAgentEndpoint, token string) error {
-	return appendToken(fmt.Sprintf("%s %s", clusterAgentEndpoint, token), SnapDataPath("credentials", "callback-tokens.txt"))
-}
-
-// GetOrCreateSelfCallbackToken sets the token that can be used for authenticating cluster agent requests to this node.
-func GetOrCreateSelfCallbackToken() (string, error) {
-	callbackTokenFile := SnapDataPath("credentials", "callback-token.txt")
-	s, err := ReadFile(callbackTokenFile)
-	if err != nil {
-		token := newRandomString(alpha, 64)
-		if err := os.WriteFile(callbackTokenFile, []byte(fmt.Sprintf("%s\n", token)), 0600); err != nil {
-			return "", fmt.Errorf("failed to create callback token file: %w", err)
-		}
-		return token, nil
-	}
-	return strings.TrimSpace(s), nil
-}
-
-// GetKnownToken retrieves the known token of a user from the known_tokens file.
-func GetKnownToken(user string) (string, error) {
-	allTokens, err := ReadFile(SnapDataPath("credentials", "known_tokens.csv"))
-	if err != nil {
-		return "", fmt.Errorf("failed to retrieve known token for user %s: %w", user, err)
-	}
-	for _, line := range strings.Split(allTokens, "\n") {
-		line = strings.TrimSpace(line)
-		parts := strings.SplitN(line, ",", 3)
-		if len(parts) >= 2 && parts[1] == user {
-			return parts[0], nil
-		}
-	}
-	return "", fmt.Errorf("no known token found for user %s", user)
-}
-
-// GetOrCreateKubeletToken retrieves the kubelet token for a Kubernetes node.
-// The existing token is returned (if any), otherwise a new one is created and appended to the known_tokens file.
-func GetOrCreateKubeletToken(hostname string) (string, error) {
-	user := fmt.Sprintf("system:node:%s", hostname)
-	existingToken, err := GetKnownToken(user)
-	if err == nil {
-		return existingToken, nil
-	}
-
-	token := newRandomString(alpha, 32)
-	uid := newRandomString(digits, 8)
-
-	if err := appendToken(fmt.Sprintf("%s,%s,kubelet-%s,\"system:nodes\"", token, user, uid), SnapDataPath("credentials", "known_tokens.csv")); err != nil {
-		return "", fmt.Errorf("failed to add new kubelet token for %s: %w", user, err)
-	}
-
-	return token, nil
 }

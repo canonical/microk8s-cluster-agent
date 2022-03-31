@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -77,12 +78,36 @@ func (s *snap) RestartService(ctx context.Context, serviceName string) error {
 	return s.runCommand(ctx, "snapctl", "restart", snapctlServiceName(serviceName, s.HasKubeliteLock()))
 }
 
+func (s *snap) RunUpgrade(ctx context.Context, upgrade string, phase string) error {
+	switch phase {
+	case "prepare", "commit", "rollback":
+	default:
+		return fmt.Errorf("unknown upgrade phase %q", phase)
+	}
+	scriptName := s.snapPath("upgrade-scripts", upgrade, fmt.Sprintf("%s-node.sh", phase))
+	if !util.FileExists(scriptName) {
+		return fmt.Errorf("could not find script %s", scriptName)
+	}
+	if err := s.runCommand(ctx, scriptName); err != nil {
+		return fmt.Errorf("failed to execute %s: %q", scriptName, err)
+	}
+	return nil
+}
+
 func (s *snap) ReadCA() (string, error) {
 	return util.ReadFile(s.snapDataPath("certs", "ca.crt"))
 }
 
 func (s *snap) ReadCAKey() (string, error) {
 	return util.ReadFile(s.snapDataPath("certs", "ca.key"))
+}
+
+func (s *snap) GetCAPath() string {
+	return s.snapDataPath("certs", "ca.crt")
+}
+
+func (s *snap) GetCAKeyPath() string {
+	return s.snapDataPath("certs", "ca.key")
 }
 
 func (s *snap) ReadServiceAccountKey() (string, error) {
@@ -103,6 +128,14 @@ func (s *snap) WriteCNIYaml(cniManifest []byte) error {
 
 func (s *snap) ApplyCNI(ctx context.Context) error {
 	return s.runCommand(ctx, s.snapPath("microk8s-kubectl.wrapper"), "apply", "-f", s.GetCNIYamlPath())
+}
+
+func (s *snap) ReadDqliteCert() (string, error) {
+	return util.ReadFile(s.snapDataPath("var", "kubernetes", "backend", "cluster.crt"))
+}
+
+func (s *snap) ReadDqliteKey() (string, error) {
+	return util.ReadFile(s.snapDataPath("var", "kubernetes", "backend", "cluster.key"))
 }
 
 func (s *snap) ReadDqliteInfoYaml() (string, error) {
@@ -144,6 +177,107 @@ func (s *snap) ReadServiceArguments(serviceName string) (string, error) {
 
 func (s *snap) WriteServiceArguments(serviceName string, arguments []byte) error {
 	return os.WriteFile(s.snapDataPath("args", serviceName), arguments, 0660)
+}
+
+func (s *snap) IsValidClusterToken(token string) bool {
+	return util.IsValidToken(token, s.snapDataPath("credentials", "cluster-tokens.txt"))
+}
+
+func (s *snap) IsValidCertificateRequestToken(token string) bool {
+	return util.IsValidToken(token, s.snapDataPath("credentials", "certs-request-tokens.txt"))
+}
+
+func (s *snap) IsValidCallbackToken(clusterAgentEndpoint string, token string) bool {
+	return util.IsValidToken(fmt.Sprintf("%s %s", clusterAgentEndpoint, token), s.snapDataPath("credentials", "callback-tokens.txt"))
+}
+
+func (s *snap) IsValidSelfCallbackToken(token string) bool {
+	return util.IsValidToken(token, s.snapDataPath("credentials", "callback-token.txt"))
+}
+
+func (s *snap) AddCertificateRequestToken(token string) error {
+	return util.AppendToken(token, s.snapDataPath("credentials", "certs-request-tokens.txt"))
+}
+
+func (s *snap) AddCallbackToken(clusterAgentEndpoint string, token string) error {
+	return util.AppendToken(fmt.Sprintf("%s %s", clusterAgentEndpoint, token), s.snapDataPath("credentials", "callback-tokens.txt"))
+}
+
+func (s *snap) RemoveClusterToken(token string) error {
+	return util.RemoveToken(token, s.snapDataPath("credentials", "cluster-tokens.txt"))
+}
+
+func (s *snap) RemoveCertificateRequestToken(token string) error {
+	return util.RemoveToken(token, s.snapDataPath("credentials", "certs-request-tokens.txt"))
+}
+
+func (s *snap) GetOrCreateSelfCallbackToken() (string, error) {
+	callbackTokenFile := s.snapDataPath("credentials", "callback-token.txt")
+	c, err := util.ReadFile(callbackTokenFile)
+	if err != nil {
+		token := util.NewRandomString(util.Alpha, 64)
+		if err := os.WriteFile(callbackTokenFile, []byte(fmt.Sprintf("%s\n", token)), 0600); err != nil {
+			return "", fmt.Errorf("failed to create callback token file: %w", err)
+		}
+		return token, nil
+	}
+	return strings.TrimSpace(c), nil
+}
+
+func (s *snap) GetOrCreateKubeletToken(hostname string) (string, error) {
+	user := fmt.Sprintf("system:node:%s", hostname)
+	existingToken, err := s.GetKnownToken(user)
+	if err == nil {
+		return existingToken, nil
+	}
+
+	token := util.NewRandomString(util.Alpha, 32)
+	uid := util.NewRandomString(util.Digits, 8)
+
+	if err := util.AppendToken(fmt.Sprintf("%s,%s,kubelet-%s,\"system:nodes\"", token, user, uid), s.snapDataPath("credentials", "known_tokens.csv")); err != nil {
+		return "", fmt.Errorf("failed to add new kubelet token for %s: %w", user, err)
+	}
+
+	return token, nil
+}
+
+func (s *snap) GetKnownToken(username string) (string, error) {
+	allTokens, err := util.ReadFile(s.snapDataPath("credentials", "known_tokens.csv"))
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve known token for user %s: %w", username, err)
+	}
+	for _, line := range strings.Split(allTokens, "\n") {
+		line = strings.TrimSpace(line)
+		parts := strings.SplitN(line, ",", 3)
+		if len(parts) >= 2 && parts[1] == username {
+			return parts[0], nil
+		}
+	}
+	return "", fmt.Errorf("no known token found for user %s", username)
+}
+
+func (s *snap) SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, error) {
+	// TODO: consider using crypto/x509 for this instead of relying on openssl commands.
+	// NOTE(neoaggelos): x509.CreateCertificate() has some hardcoded fields that are incompatible with MicroK8s.
+	signCmd := exec.CommandContext(ctx,
+		"openssl", "x509", "-sha256", "-req",
+		"-CA", s.snapDataPath("certs", "ca.crt"), "-CAkey", s.snapDataPath("certs", "ca.key"),
+		"-CAcreateserial", "-days", "3650",
+	)
+	stdin, err := signCmd.StdinPipe()
+	if err != nil {
+		return nil, fmt.Errorf("could not create stdin pipe for sign command: %w", err)
+	}
+	if _, err := stdin.Write(csrPEM); err != nil {
+		return nil, fmt.Errorf("could not write certificate request to openssl command: %w", err)
+	}
+	stdin.Close()
+	certificateBytes, err := signCmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("openssl failed: %w", err)
+	}
+
+	return certificateBytes, nil
 }
 
 var _ Snap = &snap{}
