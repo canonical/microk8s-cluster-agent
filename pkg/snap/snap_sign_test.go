@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	caCrt = `-----BEGIN CERTIFICATE-----
+	caPEM = `-----BEGIN CERTIFICATE-----
 MIIDDzCCAfegAwIBAgIURKOFladyi/c/Srb+1LGiHpVkrb8wDQYJKoZIhvcNAQEL
 BQAwFzEVMBMGA1UEAwwMMTAuMTUyLjE4My4xMB4XDTIyMDMzMTIwMTA0NVoXDTMy
 MDMyODIwMTA0NVowFzEVMBMGA1UEAwwMMTAuMTUyLjE4My4xMIIBIjANBgkqhkiG
@@ -30,7 +30,7 @@ DpIQiRyiIZich8nWTJrF3SMXdCRTbzczfNYRb17YYWC21cEJOvtqbZtCbu9vctGY
 LnQGADk0liOWnYVWtUTG8DP6Kw==
 -----END CERTIFICATE-----
 `
-	caKey = `-----BEGIN RSA PRIVATE KEY-----
+	caKeyPEM = `-----BEGIN RSA PRIVATE KEY-----
 MIIEowIBAAKCAQEArEMz1mw0QmeKo1IH3+uJWl8UxsnsXJdtQNzs0apy8wsCpJMC
 YLsElB6PDjYdQOXyBO7zPdIVAGmHsD+X8nSBHPl8YdAaIk1cSCxyN5Kee39v2P/l
 uCIY4Gfc8465tQmM7tnBVMvBf1+jCC0s5I6SQz8Z4VlbKf/0kvFy+n4UyQxDzQ/P
@@ -58,7 +58,7 @@ Qj+w5YAO9H8vYrySeeNMItOV8fkOE0mCBzpmonjeWCEKKj7rcPtUgIi8CLbV5wLw
 +HOoxP4vxs6qLpRnuoN7q78+byFXKvSAfvQ4ox1GE3cN9oAGI2xs
 -----END RSA PRIVATE KEY-----
 `
-	csr = `-----BEGIN CERTIFICATE REQUEST-----
+	csrPEM = `-----BEGIN CERTIFICATE REQUEST-----
 MIICdTCCAV0CAQAwMDEXMBUGA1UEAwwOc3lzdGVtOm5vZGU6YTIxFTATBgNVBAoM
 DHN5c3RlbTpub2RlczCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMCP
 SEMIC9W+S/6Td1erRoAfEMMZfehLdNmE8m6wUgNU7AACo1f8AVGFyULFaHmc19PY
@@ -83,16 +83,16 @@ func TestSignCert(t *testing.T) {
 	}
 	defer os.RemoveAll("testdata/certs")
 
-	if err := os.WriteFile("testdata/certs/ca.crt", []byte(caCrt), 0600); err != nil {
+	if err := os.WriteFile("testdata/certs/ca.crt", []byte(caPEM), 0600); err != nil {
 		t.Fatalf("Failed to write test certificate: %s", err)
 	}
-	if err := os.WriteFile("testdata/certs/ca.key", []byte(caKey), 0600); err != nil {
+	if err := os.WriteFile("testdata/certs/ca.key", []byte(caKeyPEM), 0600); err != nil {
 		t.Fatalf("Failed to write test certificate key: %s", err)
 	}
 
 	s := snap.NewSnap("testdata", "testdata", nil)
 
-	certificate, err := s.SignCertificate(context.Background(), []byte(csr))
+	certificate, err := s.SignCertificate(context.Background(), []byte(csrPEM))
 	if err != nil {
 		t.Fatalf("Expected no errors when signing certificate, but received %s", err)
 	}
