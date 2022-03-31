@@ -21,7 +21,6 @@ var (
 	keyfile       string
 	certfile      string
 	timeout       int
-	devMode       bool
 	enableMetrics bool
 )
 

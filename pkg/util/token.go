@@ -10,10 +10,13 @@ import (
 	"time"
 )
 
+// RandomCharacters is used as a source for NewRandomString.
 type RandomCharacters string
 
 const (
-	Alpha  RandomCharacters = "abcdefghijklmnopqrstuvqxyzABCDEFGHIJKLMONPQRSTUVWXYZ1234567890"
+	// Alpha is lower-case and upper-case ASCII characters, as well as digits 0-9.
+	Alpha RandomCharacters = "abcdefghijklmnopqrstuvqxyzABCDEFGHIJKLMONPQRSTUVWXYZ1234567890"
+	// Digits is digits 0-9.
 	Digits RandomCharacters = "0123456789"
 )
 
