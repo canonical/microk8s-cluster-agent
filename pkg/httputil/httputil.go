@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"unicode"
 )
 
 // UnmarshalJSON unmarshals JSON data from the HTTP request body.
@@ -24,7 +25,13 @@ type httpError struct {
 // Error creates an HTTP response to handle errors.
 func Error(w http.ResponseWriter, status int, err error) {
 	w.WriteHeader(status)
-	Response(w, &httpError{Error: err.Error()})
+
+	// NOTE(ktsakalozos): Capilatize first letter of error
+	r := []rune(err.Error())
+	r[0] = unicode.ToUpper(r[0])
+	errorMsg := string(r)
+
+	Response(w, &httpError{Error: errorMsg})
 	log.Printf("[ERROR %d] %q\n", status, err)
 }
 
