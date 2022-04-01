@@ -44,7 +44,7 @@ type ConfigureRequest struct {
 // Configure implements "POST /CLUSTER_API_V1/configure".
 func (a *API) Configure(ctx context.Context, req ConfigureRequest) error {
 	if !a.Snap.IsValidSelfCallbackToken(req.CallbackToken) {
-		return fmt.Errorf("invalid callback token")
+		return fmt.Errorf("invalid token")
 	}
 	for _, service := range req.ConfigureServices {
 		if err := snaputil.UpdateServiceArguments(a.Snap, service.Name, service.UpdateArguments, service.RemoveArguments); err != nil {

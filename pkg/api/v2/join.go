@@ -80,20 +80,20 @@ type JoinResponse struct {
 // Join returns the join response on success, otherwise an error and the HTTP status code.
 func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, error) {
 	if !a.Snap.IsValidClusterToken(req.ClusterToken) {
-		return nil, http.StatusInternalServerError, fmt.Errorf("invalid cluster token")
+		return nil, http.StatusInternalServerError, fmt.Errorf("invalid token")
 	}
 	if err := a.Snap.RemoveClusterToken(req.ClusterToken); err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to remove cluster token: %w", err)
 	}
 	if !a.Snap.HasDqliteLock() {
-		return nil, http.StatusNotImplemented, fmt.Errorf("not possible to join: this is not an HA MicroK8s cluster")
+		return nil, http.StatusNotImplemented, fmt.Errorf("not possible to join. This is not an HA MicroK8s cluster")
 	}
 
 	// Check cluster agent ports.
 	clusterAgentBind := snaputil.GetServiceArgument(a.Snap, "cluster-agent", "--bind")
 	_, port, _ := net.SplitHostPort(clusterAgentBind)
 	if port != req.ClusterAgentPort {
-		return nil, http.StatusBadGateway, fmt.Errorf("cluster agent port needs to be set to %s", port)
+		return nil, http.StatusBadGateway, fmt.Errorf("the port of the cluster agent port has to be set to %s", port)
 	}
 
 	// Prevent joins in the same node.
@@ -104,7 +104,7 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 
 	// Check that hostname resolves to the expected IP address
 	if util.GetRemoteHost(a.LookupIP, req.RemoteHostName, req.RemoteAddress) != req.RemoteHostName {
-		return nil, http.StatusBadRequest, fmt.Errorf("the hostname %q does not resolve to the IP %q. refusing join", req.RemoteHostName, remoteIP)
+		return nil, http.StatusBadRequest, fmt.Errorf("the hostname (%s) of the joining node does not resolve to the IP %q. Refusing join", req.RemoteHostName, remoteIP)
 	}
 
 	// Check node is not in cluster already.
@@ -114,7 +114,7 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 	}
 	for _, node := range dqliteCluster {
 		if strings.HasPrefix(node.Address, remoteIP+":") {
-			return nil, http.StatusGatewayTimeout, fmt.Errorf("joining node %q is already known to dqlite", remoteIP)
+			return nil, http.StatusGatewayTimeout, fmt.Errorf("the joining node (%s) is already known to dqlite", remoteIP)
 		}
 	}
 

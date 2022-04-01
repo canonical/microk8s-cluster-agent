@@ -22,7 +22,7 @@ type SignCertResponse struct {
 // SignCert implements "POST CLUSTER_API_V1/sign-cert".
 func (a *API) SignCert(ctx context.Context, req SignCertRequest) (*SignCertResponse, error) {
 	if !a.Snap.IsValidCertificateRequestToken(req.Token) {
-		return nil, fmt.Errorf("invalid certificate request token")
+		return nil, fmt.Errorf("invalid token")
 	}
 	if err := a.Snap.RemoveCertificateRequestToken(req.Token); err != nil {
 		return nil, fmt.Errorf("failed to remove certificate request token: %w", err)
