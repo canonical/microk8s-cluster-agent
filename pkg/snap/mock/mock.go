@@ -10,7 +10,7 @@ import (
 
 // Snap is a generic mock for the snap.Snap interface.
 type Snap struct {
-	Strict bool
+	GroupName string
 
 	EnableAddonCalledWith    []string
 	DisableAddonCalledWith   []string
@@ -60,9 +60,9 @@ type Snap struct {
 	SignedCertificate         string
 }
 
-// IsStrict is a mock implementation for the snap.Snap interface.
-func (s *Snap) IsStrict() bool {
-	return s.Strict
+// GetGroupName is a mock implementation for the snap.Snap interface.
+func (s *Snap) GetGroupName() string {
+	return s.GroupName
 }
 
 // EnableAddon is a mock implementation for the snap.Snap interface.

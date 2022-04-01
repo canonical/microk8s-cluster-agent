@@ -74,7 +74,7 @@ func IsValidToken(token string, tokensFile string) bool {
 
 // AppendToken appends a token to a file.
 // Token files contain a single token in each line.
-func AppendToken(token string, tokensFile string) error {
+func AppendToken(token string, tokensFile string, chownGroup string) error {
 	f, err := os.OpenFile(tokensFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0660)
 	if err != nil {
 		return fmt.Errorf("failed to open %s: %w", tokensFile, err)
@@ -84,14 +84,14 @@ func AppendToken(token string, tokensFile string) error {
 		return fmt.Errorf("failed to append token to %s: %w", tokensFile, err)
 	}
 	// TODO: consider whether permissions should be 0600 instead
-	SetupPermissions(tokensFile)
+	SetupPermissions(tokensFile, chownGroup)
 	return nil
 }
 
 // RemoveToken removes a token from a tokens file, if it exists.
 // Missing tokens do not cause errors.
 // Reading or writing back the token file will return an error.
-func RemoveToken(token string, tokensFile string) error {
+func RemoveToken(token string, tokensFile string, chownGroup string) error {
 	b, err := os.ReadFile(tokensFile)
 	if err != nil {
 		return fmt.Errorf("failed to read %s: %w", tokensFile, err)
@@ -113,6 +113,6 @@ func RemoveToken(token string, tokensFile string) error {
 		return fmt.Errorf("failed to write %s: %w", tokensFile, err)
 	}
 	// TODO: consider whether permissions should be 0600 instead
-	SetupPermissions(tokensFile)
+	SetupPermissions(tokensFile, chownGroup)
 	return nil
 }

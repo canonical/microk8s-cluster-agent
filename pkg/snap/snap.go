@@ -33,6 +33,13 @@ func (s *snap) snapDataPath(parts ...string) string {
 	return filepath.Join(append([]string{s.snapDataDir}, parts...)...)
 }
 
+func (s *snap) GetGroupName() string {
+	if s.isStrict() {
+		return "snap_microk8s"
+	}
+	return "microk8s"
+}
+
 func (s *snap) EnableAddon(ctx context.Context, addon string) error {
 	return s.runCommand(ctx, s.snapPath("microk8s-enable.wrapper", addon))
 }
@@ -45,7 +52,7 @@ type snapcraftYml struct {
 	Confinement string `yaml:"confinement"`
 }
 
-func (s *snap) IsStrict() bool {
+func (s *snap) isStrict() bool {
 	var meta snapcraftYml
 	contents, err := util.ReadFile(s.snapPath("meta", "snapcraft.yaml"))
 	if err != nil {
@@ -194,19 +201,19 @@ func (s *snap) IsValidSelfCallbackToken(token string) bool {
 }
 
 func (s *snap) AddCertificateRequestToken(token string) error {
-	return util.AppendToken(token, s.snapDataPath("credentials", "certs-request-tokens.txt"))
+	return util.AppendToken(token, s.snapDataPath("credentials", "certs-request-tokens.txt"), s.GetGroupName())
 }
 
 func (s *snap) AddCallbackToken(clusterAgentEndpoint string, token string) error {
-	return util.AppendToken(fmt.Sprintf("%s %s", clusterAgentEndpoint, token), s.snapDataPath("credentials", "callback-tokens.txt"))
+	return util.AppendToken(fmt.Sprintf("%s %s", clusterAgentEndpoint, token), s.snapDataPath("credentials", "callback-tokens.txt"), s.GetGroupName())
 }
 
 func (s *snap) RemoveClusterToken(token string) error {
-	return util.RemoveToken(token, s.snapDataPath("credentials", "cluster-tokens.txt"))
+	return util.RemoveToken(token, s.snapDataPath("credentials", "cluster-tokens.txt"), s.GetGroupName())
 }
 
 func (s *snap) RemoveCertificateRequestToken(token string) error {
-	return util.RemoveToken(token, s.snapDataPath("credentials", "certs-request-tokens.txt"))
+	return util.RemoveToken(token, s.snapDataPath("credentials", "certs-request-tokens.txt"), s.GetGroupName())
 }
 
 func (s *snap) GetOrCreateSelfCallbackToken() (string, error) {
@@ -232,7 +239,7 @@ func (s *snap) GetOrCreateKubeletToken(hostname string) (string, error) {
 	token := util.NewRandomString(util.Alpha, 32)
 	uid := util.NewRandomString(util.Digits, 8)
 
-	if err := util.AppendToken(fmt.Sprintf("%s,%s,kubelet-%s,\"system:nodes\"", token, user, uid), s.snapDataPath("credentials", "known_tokens.csv")); err != nil {
+	if err := util.AppendToken(fmt.Sprintf("%s,%s,kubelet-%s,\"system:nodes\"", token, user, uid), s.snapDataPath("credentials", "known_tokens.csv"), s.GetGroupName()); err != nil {
 		return "", fmt.Errorf("failed to add new kubelet token for %s: %w", user, err)
 	}
 

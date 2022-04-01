@@ -6,8 +6,9 @@ import (
 
 // Snap is how the cluster agent interacts with the snap.
 type Snap interface {
-	// IsStrict returns true if the snap is running in strict confinement.
-	IsStrict() bool
+	// GetGroupName is the group microk8s is using.
+	// The group name is "microk8s" for classic snaps and "snap_microk8s" for strict snaps.
+	GetGroupName() string
 
 	// EnableAddon enables a MicroK8s addon.
 	EnableAddon(ctx context.Context, addon string) error

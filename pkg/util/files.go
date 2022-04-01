@@ -16,9 +16,9 @@ func FileExists(path string) bool {
 // SetupPermissions attempts to set file permissions to 0660 and group to `microk8s` for a given file.
 // SetupPermissions will knowingly ignore any errors, as failing to update permissions will only occur
 // in extraordinary situations, and will never break the MicroK8s cluster.
-func SetupPermissions(path string) {
+func SetupPermissions(path string, chownGroup string) {
 	os.Chmod(path, 0660)
-	if group, err := user.LookupGroup("microk8s"); err == nil {
+	if group, err := user.LookupGroup(chownGroup); err == nil {
 		if gid, err := strconv.ParseInt(group.Gid, 10, 32); err == nil {
 			os.Chown(path, -1, int(gid))
 		}

@@ -217,3 +217,25 @@ token2,system:node:existing-host,kubelet-0123,"system:nodes"
 		})
 	})
 }
+
+func TestStrictGroup(t *testing.T) {
+	if err := os.MkdirAll("testdata/meta", 0755); err != nil {
+		t.Fatalf("Failed to create test directory: %s", err)
+	}
+	defer os.RemoveAll("testdata/meta")
+	for _, tc := range []struct {
+		confinement string
+		group       string
+	}{
+		{confinement: "strict", group: "snap_microk8s"},
+		{confinement: "classic", group: "microk8s"},
+	} {
+		if err := os.WriteFile("testdata/meta/snapcraft.yaml", []byte(fmt.Sprintf("confinement: %s", tc.confinement)), 0660); err != nil {
+			t.Fatalf("Failed to create test file: %s", err)
+		}
+		group := snap.NewSnap("testdata", "testdata", nil).GetGroupName()
+		if tc.group != group {
+			t.Fatalf("Expected group to be %q but it was %q instead", tc.group, group)
+		}
+	}
+}
