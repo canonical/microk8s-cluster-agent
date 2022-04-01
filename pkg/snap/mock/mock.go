@@ -44,7 +44,6 @@ type Snap struct {
 
 	ClusterTokens            []string
 	CertificateRequestTokens []string
-	CallbackTokens           []string // "{clusterAgentEndpoint} {token}"
 	SelfCallbackTokens       []string
 
 	AddCertificateRequestTokenCalledWith []string
@@ -204,11 +203,6 @@ func (s *Snap) IsValidClusterToken(token string) bool {
 // IsValidCertificateRequestToken is a mock implementation for the snap.Snap interface.
 func (s *Snap) IsValidCertificateRequestToken(token string) bool {
 	return contains(s.CertificateRequestTokens, token)
-}
-
-// IsValidCallbackToken is a mock implementation for the snap.Snap interface.
-func (s *Snap) IsValidCallbackToken(clusterAgentEndpoint string, token string) bool {
-	return contains(s.CallbackTokens, fmt.Sprintf("%s %s", clusterAgentEndpoint, token))
 }
 
 // IsValidSelfCallbackToken is a mock implementation for the snap.Snap interface.

@@ -189,10 +189,6 @@ func (s *snap) IsValidCertificateRequestToken(token string) bool {
 	return util.IsValidToken(token, s.snapDataPath("credentials", "certs-request-tokens.txt"))
 }
 
-func (s *snap) IsValidCallbackToken(clusterAgentEndpoint string, token string) bool {
-	return util.IsValidToken(fmt.Sprintf("%s %s", clusterAgentEndpoint, token), s.snapDataPath("credentials", "callback-tokens.txt"))
-}
-
 func (s *snap) IsValidSelfCallbackToken(token string) bool {
 	return util.IsValidToken(token, s.snapDataPath("credentials", "callback-token.txt"))
 }

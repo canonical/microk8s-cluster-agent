@@ -122,9 +122,6 @@ func TestCallbackTokens(t *testing.T) {
 	if !strings.Contains(contents, "ip:port my-token\n") {
 		t.Fatal("Expected my-token to exist in tokens file, but it did not")
 	}
-	if !s.IsValidCallbackToken("ip:port", "my-token") {
-		t.Fatal("Expected my-token to be a valid callback token for ip:port, but it is not")
-	}
 }
 
 func TestSelfCallbackToken(t *testing.T) {

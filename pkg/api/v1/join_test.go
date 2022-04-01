@@ -18,8 +18,7 @@ func TestJoin(t *testing.T) {
 			"kube-apiserver": "--secure-port 16443",
 			"kubelet":        "kubelet arguments\n",
 		},
-		ClusterTokens:  []string{"valid-cluster-token", "valid-other-token"},
-		CallbackTokens: []string{},
+		ClusterTokens: []string{"valid-cluster-token", "valid-other-token"},
 		KnownTokens: map[string]string{
 			"admin":             "admin-token",
 			"system:kube-proxy": "kube-proxy-token",

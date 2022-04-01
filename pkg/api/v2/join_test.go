@@ -43,7 +43,6 @@ Role: 0
 			"cluster-agent":  "--bind=0.0.0.0:25000",
 		},
 		ClusterTokens:     []string{"worker-token", "control-plane-token"},
-		CallbackTokens:    []string{},
 		SelfCallbackToken: "callback-token",
 		CNIYaml:           `some random content. "first-found"`,
 		KnownTokens: map[string]string{
@@ -190,7 +189,6 @@ Role: 0
 			"cluster-agent":  "--bind=0.0.0.0:25000",
 		},
 		ClusterTokens:     []string{"control-plane-token"},
-		CallbackTokens:    []string{},
 		SelfCallbackToken: "callback-token",
 		CNIYaml:           `some random content. "first-found"`,
 		KnownTokens: map[string]string{
