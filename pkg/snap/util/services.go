@@ -63,6 +63,7 @@ func UpdateServiceArguments(s snap.Snap, serviceName string, updateList []map[st
 		return fmt.Errorf("failed to read arguments of service %s: %w", serviceName, err)
 	}
 
+	existingArguments := make(map[string]struct{}, len(arguments))
 	newArguments := make([]string, 0, len(arguments))
 	for _, line := range strings.Split(arguments, "\n") {
 		line = strings.TrimSpace(line)
@@ -73,6 +74,7 @@ func UpdateServiceArguments(s snap.Snap, serviceName string, updateList []map[st
 		// handle "--argument value" and "--argument=value" variants
 		key := strings.SplitN(line, " ", 2)[0]
 		key = strings.SplitN(key, "=", 2)[0]
+		existingArguments[key] = struct{}{}
 		if newValue, ok := updateMap[key]; ok {
 			// update argument with new value
 			newArguments = append(newArguments, fmt.Sprintf("%s=%s", key, newValue))
@@ -82,6 +84,12 @@ func UpdateServiceArguments(s snap.Snap, serviceName string, updateList []map[st
 		} else {
 			// no change
 			newArguments = append(newArguments, line)
+		}
+	}
+
+	for key, value := range updateMap {
+		if _, argExists := existingArguments[key]; !argExists {
+			newArguments = append(newArguments, fmt.Sprintf("%s=%s", key, value))
 		}
 	}
 

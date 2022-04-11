@@ -96,6 +96,13 @@ func TestUpdateServiceArguments(t *testing.T) {
 				"--key": "value",
 			},
 		},
+		{
+			name:   "new-opt",
+			update: []map[string]string{{"--new-opt": "opt-value"}},
+			expectedValues: map[string]string{
+				"--new-opt": "opt-value",
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := &mock.Snap{
