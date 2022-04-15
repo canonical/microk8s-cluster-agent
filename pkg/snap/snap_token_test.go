@@ -15,11 +15,8 @@ func TestClusterTokens(t *testing.T) {
 	os.RemoveAll("testdata/credentials")
 	s := snap.NewSnap("testdata", "testdata", nil)
 	t.Run("MissingTokensFile", func(t *testing.T) {
-		if s.IsValidClusterToken("token1") {
+		if s.ConsumeClusterToken("token1") {
 			t.Fatal("Expected token1 to not be valid, but it is")
-		}
-		if err := s.RemoveClusterToken("token1"); err == nil {
-			t.Fatal("Expected an error when removing a missing cluster token, but did not receive any")
 		}
 	})
 	if err := os.MkdirAll("testdata/credentials", 0755); err != nil {
@@ -28,7 +25,7 @@ func TestClusterTokens(t *testing.T) {
 	defer os.RemoveAll("testdata/credentials")
 	now := time.Now().Unix()
 	clusterTokens := fmt.Sprintf(`
-token1
+one-time-token
 token-invalid-timestamp|-10a
 token-expired|%d
 token-not-expired|%d
@@ -42,14 +39,28 @@ token-not-expired|%d
 		token         string
 		expectedValid bool
 	}{
-		{token: "token1", expectedValid: true},
-		{token: "token-expired", expectedValid: false},
-		{token: "token-not-expired", expectedValid: true},
+		// empty token is never valid
+		{token: "", expectedValid: false},
+
+		// missing token and invalid timestamp is not valid
 		{token: "missing-token", expectedValid: false},
 		{token: "token-invalid-timestamp", expectedValid: false},
+
+		// tokens with expired TTL are not valid
+		{token: "token-expired", expectedValid: false},
+
+		// one-time tokens are only valid for a single use
+		{token: "one-time-token", expectedValid: true},
+		{token: "one-time-token", expectedValid: false},
+		{token: "one-time-token", expectedValid: false},
+
+		// tokens with a TTL may be reused
+		{token: "token-not-expired", expectedValid: true},
+		{token: "token-not-expired", expectedValid: true},
+		{token: "token-not-expired", expectedValid: true},
 	} {
 		t.Run(tc.token, func(t *testing.T) {
-			if s.IsValidClusterToken(tc.token) != tc.expectedValid {
+			if s.ConsumeClusterToken(tc.token) != tc.expectedValid {
 				if tc.expectedValid {
 					t.Fatalf("Token %s should be valid, but it is not", tc.token)
 				} else {
@@ -58,31 +69,6 @@ token-not-expired|%d
 			}
 		})
 	}
-
-	t.Run("RemoveOne", func(t *testing.T) {
-		if err := s.RemoveClusterToken("token1"); err != nil {
-			t.Fatalf("Failed to remove cluster token: %s", err)
-		}
-		if s.IsValidClusterToken("token1") {
-			t.Fatal("Cluster token token1 should not be valid after removal, but it is")
-		}
-		if !s.IsValidClusterToken("token-not-expired") {
-			t.Fatal("Cluster token token-not-expired should be valid after removal of other token, but it is not")
-		}
-	})
-
-	t.Run("RemoveAll", func(t *testing.T) {
-		for _, token := range []string{"token1", "token-not-expired", "missing"} {
-			t.Run(token, func(t *testing.T) {
-				if err := s.RemoveClusterToken(token); err != nil {
-					t.Fatalf("Failed to remove cluster token %s: %s", token, err)
-				}
-				if s.IsValidClusterToken(token) {
-					t.Fatalf("Cluster token %s should not be valid after removal, but it is", token)
-				}
-			})
-		}
-	})
 }
 
 func TestCertificateRequestTokens(t *testing.T) {
@@ -101,7 +87,7 @@ func TestCertificateRequestTokens(t *testing.T) {
 	if !strings.Contains(contents, "my-token\n") {
 		t.Fatal("Expected my-token to exist in tokens file, but it did not")
 	}
-	if !s.IsValidCertificateRequestToken("my-token") {
+	if !s.ConsumeCertificateRequestToken("my-token") {
 		t.Fatal("Expected my-token to be a valid certificate request token, but it is not")
 	}
 }
@@ -137,7 +123,7 @@ func TestSelfCallbackToken(t *testing.T) {
 	if token == "" {
 		t.Fatalf("Expected token to not be empty, but it is")
 	}
-	if !s.IsValidSelfCallbackToken(token) {
+	if !s.ConsumeSelfCallbackToken(token) {
 		t.Fatal("Expected my-token to be a valid callback token for this node, but it is not")
 	}
 	tokenAgain, err := s.GetOrCreateSelfCallbackToken()
