@@ -58,6 +58,9 @@ token-not-expired|%d
 		{token: "token-not-expired", expectedValid: true},
 		{token: "token-not-expired", expectedValid: true},
 		{token: "token-not-expired", expectedValid: true},
+
+		// tokens with '|' are invalid
+		{token: "token-invalid-timestamp|-10a", expectedValid: false},
 	} {
 		t.Run(tc.token, func(t *testing.T) {
 			if s.ConsumeClusterToken(tc.token) != tc.expectedValid {
