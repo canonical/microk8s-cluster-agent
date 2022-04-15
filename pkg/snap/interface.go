@@ -61,22 +61,20 @@ type Snap interface {
 	// WriteServiceArguments updates the arguments file a particular service.
 	WriteServiceArguments(serviceName string, b []byte) error
 
-	// IsValidClusterToken returns true if token is a valid token for authenticating join requests.
-	IsValidClusterToken(token string) bool
-	// IsValidCertificateRequestToken returns true if token is a valid token for authenticating certificate signing requests.
-	IsValidCertificateRequestToken(token string) bool
-	// IsValidSelfCallbackToken returns true if token is a valid token for authenticating configure and upgrade requests.
-	IsValidSelfCallbackToken(token string) bool
+	// ConsumeClusterToken returns true if token is a valid token for authenticating join requests.
+	// Tokens with a TTL may be consumed multiple times until they expire. One-time tokens may only be consumed once.
+	ConsumeClusterToken(token string) bool
+	// ConsumeCertificateRequestToken returns true if token is a valid token for authenticating certificate signing requests.
+	// Certificate request tokens may only be consumed once.
+	ConsumeCertificateRequestToken(token string) bool
+	// ConsumeSelfCallbackToken returns true if token is a valid token for authenticating configure and upgrade requests.
+	// Self callback tokens may be consumed multiple times.
+	ConsumeSelfCallbackToken(token string) bool
 
 	// AddCertificateRequestToken adds a new token that can be used to authenticate certificate signing requests.
 	AddCertificateRequestToken(token string) error
 	// AddCallbackToken adds a new token that can be used to authenticate requests to a remote cluster agent endpoint.
 	AddCallbackToken(clusterAgentEndpoint, token string) error
-
-	// RemoveClusterToken removes a cluster token. It should be called after the token has been used.
-	RemoveClusterToken(token string) error
-	// RemoveCertificateRequest removes a certificate request token. It should be called after the token has been used.
-	RemoveCertificateRequestToken(token string) error
 
 	// GetOrCreateSelfCallbackToken creates and returns the callback token that can be used for configure and upgrade requests to this cluster agent.
 	// Subsequent calls should return the same token.

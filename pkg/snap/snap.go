@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"log"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -188,16 +189,31 @@ func (s *snap) WriteServiceArguments(serviceName string, arguments []byte) error
 	return os.WriteFile(s.snapDataPath("args", serviceName), arguments, 0660)
 }
 
-func (s *snap) IsValidClusterToken(token string) bool {
-	return util.IsValidToken(token, s.snapDataPath("credentials", "cluster-tokens.txt"))
+func (s *snap) ConsumeClusterToken(token string) bool {
+	clusterTokensFile := s.snapDataPath("credentials", "cluster-tokens.txt")
+	isValid, hasTTL := util.IsValidToken(token, clusterTokensFile)
+	if isValid && !hasTTL {
+		if err := util.RemoveToken(token, clusterTokensFile, s.GetGroupName()); err != nil {
+			log.Printf("Failed to remove cluster token: %v", err)
+		}
+	}
+	return isValid
 }
 
-func (s *snap) IsValidCertificateRequestToken(token string) bool {
-	return util.IsValidToken(token, s.snapDataPath("credentials", "certs-request-tokens.txt"))
+func (s *snap) ConsumeCertificateRequestToken(token string) bool {
+	certRequestTokensFile := s.snapDataPath("credentials", "certs-request-tokens.txt")
+	isValid, _ := util.IsValidToken(token, certRequestTokensFile)
+	if isValid {
+	if err := util.RemoveToken(token, certRequestTokensFile, s.GetGroupName()); err != nil {
+		log.Printf("Failed to remove certificate request token: %v", err)
+	}
+}
+	return isValid
 }
 
-func (s *snap) IsValidSelfCallbackToken(token string) bool {
-	return util.IsValidToken(token, s.snapDataPath("credentials", "callback-token.txt"))
+func (s *snap) ConsumeSelfCallbackToken(token string) bool {
+	valid, _ := util.IsValidToken(token, s.snapDataPath("credentials", "callback-token.txt"))
+	return valid
 }
 
 func (s *snap) AddCertificateRequestToken(token string) error {
@@ -206,14 +222,6 @@ func (s *snap) AddCertificateRequestToken(token string) error {
 
 func (s *snap) AddCallbackToken(clusterAgentEndpoint string, token string) error {
 	return util.AppendToken(fmt.Sprintf("%s %s", clusterAgentEndpoint, token), s.snapDataPath("credentials", "callback-tokens.txt"), s.GetGroupName())
-}
-
-func (s *snap) RemoveClusterToken(token string) error {
-	return util.RemoveToken(token, s.snapDataPath("credentials", "cluster-tokens.txt"), s.GetGroupName())
-}
-
-func (s *snap) RemoveCertificateRequestToken(token string) error {
-	return util.RemoveToken(token, s.snapDataPath("credentials", "certs-request-tokens.txt"), s.GetGroupName())
 }
 
 func (s *snap) GetOrCreateSelfCallbackToken() (string, error) {

@@ -67,9 +67,13 @@ Role: 0
 		if resp != nil {
 			t.Fatalf("Expected a nil response but received %#v", resp)
 		}
+		if !reflect.DeepEqual(s.ConsumeClusterTokenCalledWith, []string{"invalid-token"}) {
+			t.Fatalf("Expected ConsumeClusterToken to be called with %v, but it was called with %v instead", []string{"invalid-token"}, s.ConsumeClusterTokenCalledWith)
+		}
 	})
 
 	t.Run("ControlPlane", func(t *testing.T) {
+		s.ConsumeClusterTokenCalledWith = nil
 		resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{
 			ClusterToken:     "control-plane-token",
 			RemoteHostName:   "test-control-plane",
@@ -102,8 +106,8 @@ Role: 0
 		if !reflect.DeepEqual(*resp, *expectedResponse) {
 			t.Fatalf("Expected response %#v, but received %#v instead", expectedResponse, resp)
 		}
-		if !reflect.DeepEqual(s.RemoveClusterTokenCalledWith, []string{"control-plane-token"}) {
-			t.Fatalf("Expected RemoveClusterToken to be called with %v, but it was called with %v instead", []string{"control-plane-token"}, s.RemoveClusterTokenCalledWith)
+		if !reflect.DeepEqual(s.ConsumeClusterTokenCalledWith, []string{"control-plane-token"}) {
+			t.Fatalf("Expected ConsumeClusterToken to be called with %v, but it was called with %v instead", []string{"control-plane-token"}, s.ConsumeClusterTokenCalledWith)
 		}
 
 		if len(s.ApplyCNICalled) != 1 {
@@ -116,7 +120,7 @@ Role: 0
 
 	t.Run("Worker", func(t *testing.T) {
 		// Reset
-		s.RemoveClusterTokenCalledWith = nil
+		s.ConsumeClusterTokenCalledWith = nil
 		s.ApplyCNICalled = nil
 		s.CreateNoCertsReissueLockCalledWith = nil
 
@@ -147,8 +151,8 @@ Role: 0
 		if !reflect.DeepEqual(*resp, *expectedResponse) {
 			t.Fatalf("Expected response %#v, but received %#v instead", expectedResponse, resp)
 		}
-		if !reflect.DeepEqual(s.RemoveClusterTokenCalledWith, []string{"worker-token"}) {
-			t.Fatalf("Expected RemoveClusterToken to be called with %v, but it was called with %v instead", []string{"worker-token"}, s.RemoveClusterTokenCalledWith)
+		if !reflect.DeepEqual(s.ConsumeClusterTokenCalledWith, []string{"worker-token"}) {
+			t.Fatalf("Expected ConsumeClusterToken to be called with %v, but it was called with %v instead", []string{"worker-token"}, s.ConsumeClusterTokenCalledWith)
 		}
 		expectedCertRequestTokens := []string{"worker-token-kubelet", "worker-token-proxy"}
 		if !reflect.DeepEqual(s.AddCertificateRequestTokenCalledWith, expectedCertRequestTokens) {
@@ -243,8 +247,8 @@ Role: 0
 	if !reflect.DeepEqual(*resp, *expectedResponse) {
 		t.Fatalf("Expected response %#v, but received %#v instead", expectedResponse, resp)
 	}
-	if !reflect.DeepEqual(s.RemoveClusterTokenCalledWith, []string{"control-plane-token"}) {
-		t.Fatalf("Expected RemoveClusterToken to be called with %v, but it was called with %v instead", []string{"control-plane-token"}, s.RemoveClusterTokenCalledWith)
+	if !reflect.DeepEqual(s.ConsumeClusterTokenCalledWith, []string{"control-plane-token"}) {
+		t.Fatalf("Expected ConsumeClusterToken to be called with %v, but it was called with %v instead", []string{"control-plane-token"}, s.ConsumeClusterTokenCalledWith)
 	}
 	expectedUpdate := []string{"Address: 10.10.10.10:19001\n"}
 	if !reflect.DeepEqual(s.WriteDqliteUpdateYamlCalledWith, expectedUpdate) {

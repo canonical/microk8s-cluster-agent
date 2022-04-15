@@ -49,8 +49,8 @@ type Snap struct {
 	AddCertificateRequestTokenCalledWith []string
 	AddCallbackTokenCalledWith           []string // "{clusterAgentEndpoint} {token}"
 
-	RemoveClusterTokenCalledWith            []string
-	RemoveCertificateRequestTokenCalledWith []string
+	ConsumeClusterTokenCalledWith            []string
+	ConsumeCertificateRequestTokenCalledWith []string
 
 	SelfCallbackToken string
 	KubeletTokens     map[string]string // map hostname to token
@@ -195,18 +195,27 @@ func contains(list []string, item string) bool {
 	return false
 }
 
-// IsValidClusterToken is a mock implementation for the snap.Snap interface.
-func (s *Snap) IsValidClusterToken(token string) bool {
+// ConsumeClusterToken is a mock implementation for the snap.Snap interface.
+func (s *Snap) ConsumeClusterToken(token string) bool {
+	if s.ConsumeClusterTokenCalledWith == nil {
+		s.ConsumeClusterTokenCalledWith = make([]string, 0, 1)
+	}
+	s.ConsumeClusterTokenCalledWith = append(s.ConsumeClusterTokenCalledWith, token)
 	return contains(s.ClusterTokens, token)
 }
 
-// IsValidCertificateRequestToken is a mock implementation for the snap.Snap interface.
-func (s *Snap) IsValidCertificateRequestToken(token string) bool {
+// ConsumeCertificateRequestToken is a mock implementation for the snap.Snap interface.
+func (s *Snap) ConsumeCertificateRequestToken(token string) bool {
+	if s.ConsumeCertificateRequestTokenCalledWith == nil {
+		s.ConsumeCertificateRequestTokenCalledWith = make([]string, 0, 1)
+	}
+
+	s.ConsumeCertificateRequestTokenCalledWith = append(s.ConsumeCertificateRequestTokenCalledWith, token)
 	return contains(s.CertificateRequestTokens, token)
 }
 
-// IsValidSelfCallbackToken is a mock implementation for the snap.Snap interface.
-func (s *Snap) IsValidSelfCallbackToken(token string) bool {
+// ConsumeSelfCallbackToken is a mock implementation for the snap.Snap interface.
+func (s *Snap) ConsumeSelfCallbackToken(token string) bool {
 	return contains(s.SelfCallbackTokens, token)
 }
 
@@ -232,21 +241,11 @@ func (s *Snap) AddCallbackToken(clusterAgentEndpoint string, token string) error
 
 // RemoveClusterToken is a mock implementation for the snap.Snap interface.
 func (s *Snap) RemoveClusterToken(token string) error {
-	if s.RemoveClusterTokenCalledWith == nil {
-		s.RemoveClusterTokenCalledWith = make([]string, 0, 1)
+	if s.ConsumeClusterTokenCalledWith == nil {
+		s.ConsumeClusterTokenCalledWith = make([]string, 0, 1)
 	}
 
-	s.RemoveClusterTokenCalledWith = append(s.RemoveClusterTokenCalledWith, token)
-	return nil
-}
-
-// RemoveCertificateRequestToken is a mock implementation for the snap.Snap interface.
-func (s *Snap) RemoveCertificateRequestToken(token string) error {
-	if s.RemoveCertificateRequestTokenCalledWith == nil {
-		s.RemoveCertificateRequestTokenCalledWith = make([]string, 0, 1)
-	}
-
-	s.RemoveCertificateRequestTokenCalledWith = append(s.RemoveCertificateRequestTokenCalledWith, token)
+	s.ConsumeClusterTokenCalledWith = append(s.ConsumeClusterTokenCalledWith, token)
 	return nil
 }
 

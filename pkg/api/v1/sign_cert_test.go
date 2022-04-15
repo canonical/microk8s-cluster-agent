@@ -25,9 +25,15 @@ func TestSignCert(t *testing.T) {
 		if resp != nil {
 			t.Fatalf("Expected a nil response but received %#v", resp)
 		}
+		expectedConsumeCertificateRequestTokenCalledWith := []string{"invalid-token"}
+		if !reflect.DeepEqual(expectedConsumeCertificateRequestTokenCalledWith, s.ConsumeCertificateRequestTokenCalledWith) {
+			t.Fatalf("Expected ConsumeCertificateRequestToken to be called with %v, but it was called with %v instead", expectedConsumeCertificateRequestTokenCalledWith, s.ConsumeCertificateRequestTokenCalledWith)
+		}
 	})
 
 	t.Run("Success", func(t *testing.T) {
+		s.ConsumeCertificateRequestTokenCalledWith = nil
+
 		resp, err := apiv1.SignCert(context.Background(), v1.SignCertRequest{
 			Token:                     "valid-token",
 			CertificateSigningRequest: "CSR DATA",
@@ -42,9 +48,9 @@ func TestSignCert(t *testing.T) {
 		if !reflect.DeepEqual(expectedCalledWith, s.SignCertificateCalledWith) {
 			t.Fatalf("Expected SignCertificate called with %v, but it was called with %v instead", expectedCalledWith, s.SignCertificateCalledWith)
 		}
-		expectedRemoveCertificateRequestTokenCalledWith := []string{"valid-token"}
-		if !reflect.DeepEqual(expectedRemoveCertificateRequestTokenCalledWith, s.RemoveCertificateRequestTokenCalledWith) {
-			t.Fatalf("Expected RemoveCertificateRequestToken to be called with %v, but it was called with %v instead", expectedRemoveCertificateRequestTokenCalledWith, s.RemoveCertificateRequestTokenCalledWith)
+		expectedConsumeCertificateRequestTokenCalledWith := []string{"valid-token"}
+		if !reflect.DeepEqual(expectedConsumeCertificateRequestTokenCalledWith, s.ConsumeCertificateRequestTokenCalledWith) {
+			t.Fatalf("Expected ConsumeCertificateRequestToken to be called with %v, but it was called with %v instead", expectedConsumeCertificateRequestTokenCalledWith, s.ConsumeCertificateRequestTokenCalledWith)
 		}
 		if resp.Certificate != s.SignedCertificate {
 			t.Fatalf("Expected ceritificate to be %q, but it was %q instead", s.SignedCertificate, resp.Certificate)

@@ -41,12 +41,12 @@ func NewRandomString(letters RandomCharacters, length int) string {
 // For example, the tokens file may look like this:
 //
 //     token1
-//     token2 35616531876
+//     token2|35616531876
 //
 // In the file above, token1 is a valid token. token2 is valid until the unix timestamp 35616531876.
-func IsValidToken(token string, tokensFile string) bool {
+func IsValidToken(token string, tokensFile string) (isValidToken, hasTTL bool) {
 	if token == "" {
-		return false
+		return false, false
 	}
 	token = strings.TrimSpace(token)
 	if b, err := os.ReadFile(tokensFile); err == nil {
@@ -57,19 +57,19 @@ func IsValidToken(token string, tokensFile string) bool {
 				continue
 			}
 			if len(parts) == 1 {
-				return true
+				return true, false
 			}
 			// token with expiry
 			if len(parts) == 2 {
 				timestamp, err := strconv.ParseInt(parts[1], 10, 64)
 				if err != nil {
-					return false
+					return false, true
 				}
-				return time.Now().Before(time.Unix(timestamp, 0))
+				return time.Now().Before(time.Unix(timestamp, 0)), true
 			}
 		}
 	}
-	return false
+	return false, false
 }
 
 // AppendToken appends a token to a file.
