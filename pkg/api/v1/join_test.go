@@ -39,6 +39,9 @@ func TestJoin(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected an error due to invalid token, but did not get any")
 		}
+		if !reflect.DeepEqual(s.ConsumeClusterTokenCalledWith, []string{"invalid-token"}) {
+			t.Fatalf("Expected ConsumeClusterToken to be called with %v, but it was called with %v instead", []string{"invalid-token"}, s.ConsumeClusterTokenCalledWith)
+		}
 	})
 
 	t.Run("Dqlite", func(t *testing.T) {
@@ -56,7 +59,7 @@ func TestJoin(t *testing.T) {
 	})
 
 	t.Run("Success", func(t *testing.T) {
-		s.RemoveClusterTokenCalledWith = nil
+		s.ConsumeClusterTokenCalledWith = nil
 		resp, err := apiv1.Join(context.Background(), v1.JoinRequest{
 			ClusterToken:     "valid-cluster-token",
 			HostName:         "my-hostname",
@@ -85,8 +88,8 @@ func TestJoin(t *testing.T) {
 		if len(resp.KubeletToken) != 32 {
 			t.Fatalf("Expected kubelet token %q to have length 32", resp.KubeletToken)
 		}
-		if !reflect.DeepEqual(s.RemoveClusterTokenCalledWith, []string{"valid-cluster-token"}) {
-			t.Fatalf("Expected RemoveClusterToken to be called with %v, but it was called with %v instead", []string{"valid-cluster-token"}, s.RemoveClusterTokenCalledWith)
+		if !reflect.DeepEqual(s.ConsumeClusterTokenCalledWith, []string{"valid-cluster-token"}) {
+			t.Fatalf("Expected ConsumeClusterToken to be called with %v, but it was called with %v instead", []string{"valid-cluster-token"}, s.ConsumeClusterTokenCalledWith)
 		}
 		if !reflect.DeepEqual(s.RestartServiceCalledWith, []string{"apiserver"}) {
 			t.Fatalf("Expected API server restart command, but got %v instead", s.RestartServiceCalledWith)

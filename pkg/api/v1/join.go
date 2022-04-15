@@ -44,11 +44,8 @@ type JoinResponse struct {
 
 // Join implements "POST /CLUSTER_API_V1/join".
 func (a *API) Join(ctx context.Context, request JoinRequest) (*JoinResponse, error) {
-	if !a.Snap.IsValidClusterToken(request.ClusterToken) {
+	if !a.Snap.ConsumeClusterToken(request.ClusterToken) {
 		return nil, fmt.Errorf("invalid token")
-	}
-	if err := a.Snap.RemoveClusterToken(request.ClusterToken); err != nil {
-		return nil, fmt.Errorf("failed to remove cluster token: %w", err)
 	}
 
 	if a.Snap.HasDqliteLock() {

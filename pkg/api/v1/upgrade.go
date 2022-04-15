@@ -19,7 +19,7 @@ type UpgradeRequest struct {
 
 // Upgrade implements "POST v1/upgrade".
 func (a *API) Upgrade(ctx context.Context, req UpgradeRequest) error {
-	if !a.Snap.IsValidSelfCallbackToken(req.CallbackToken) {
+	if !a.Snap.ConsumeSelfCallbackToken(req.CallbackToken) {
 		return fmt.Errorf("invalid token")
 	}
 	if err := a.Snap.RunUpgrade(ctx, req.UpgradeName, req.UpgradePhase); err != nil {

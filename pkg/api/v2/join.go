@@ -79,11 +79,8 @@ type JoinResponse struct {
 // Join implements "POST v2/join".
 // Join returns the join response on success, otherwise an error and the HTTP status code.
 func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, error) {
-	if !a.Snap.IsValidClusterToken(req.ClusterToken) {
+	if !a.Snap.ConsumeClusterToken(req.ClusterToken) {
 		return nil, http.StatusInternalServerError, fmt.Errorf("invalid token")
-	}
-	if err := a.Snap.RemoveClusterToken(req.ClusterToken); err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to remove cluster token: %w", err)
 	}
 	if !a.Snap.HasDqliteLock() {
 		return nil, http.StatusNotImplemented, fmt.Errorf("not possible to join. This is not an HA MicroK8s cluster")
