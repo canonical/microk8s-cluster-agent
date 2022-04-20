@@ -42,7 +42,7 @@ lifecycle of a MicroK8s cluster.`,
 			LookupIP:                net.LookupIP,
 			ListControlPlaneNodeIPs: snaputil.ListControlPlaneNodeIPs,
 		}
-		srv := server.NewServer(time.Duration(timeout)*time.Second, enableMetrics, apiv1, apiv2)
+		srv := server.NewServer(time.Duration(timeout)*time.Second, enableMetrics, apiv1.RegisterServer, apiv2.RegisterServer)
 		log.Printf("Starting cluster agent on https://%s\n", bind)
 		if err := http.ListenAndServeTLS(bind, certfile, keyfile, srv); err != nil {
 			log.Fatalf("Failed to listen: %s", err)
