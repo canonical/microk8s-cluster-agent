@@ -9,13 +9,14 @@ import (
 	"time"
 
 	v2 "github.com/canonical/microk8s-cluster-agent/pkg/api/v2"
+	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap/mock"
 )
 
 // TestJoin tests responses when joining control plane and worker nodes in an existing cluster.
 func TestJoin(t *testing.T) {
 	s := &mock.Snap{
-		DqliteLock: true,
+		DataStore:  snap.DqliteDataStore,
 		DqliteCert: "DQLITE CERTIFICATE DATA",
 		DqliteKey:  "DQLITE KEY DATA",
 		DqliteInfoYaml: `
@@ -171,7 +172,7 @@ Role: 0
 // TestJoinFirstNode mocks the dqlite bind address update and verifies that is is handled properly.
 func TestJoinFirstNode(t *testing.T) {
 	s := &mock.Snap{
-		DqliteLock: true,
+		DataStore:  snap.DqliteDataStore,
 		DqliteCert: "DQLITE CERTIFICATE DATA",
 		DqliteKey:  "DQLITE KEY DATA",
 		DqliteInfoYaml: `

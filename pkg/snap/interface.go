@@ -4,6 +4,20 @@ import (
 	"context"
 )
 
+// DataStore is the type of data store used by the MicroK8s cluster.
+type DataStore string
+
+var (
+	// SingleNodeEtcdDataStore is the old non-HA etcd data store.
+	SingleNodeEtcdDataStore DataStore = "etcd"
+
+	// DqliteDataStore is the HA dqlite data store.
+	DqliteDataStore DataStore = "dqlite"
+
+	// EtcdDataStore is the HA etcd data store, using etcdadm.
+	EtcdDataStore DataStore = "ha-etcd"
+)
+
 // Snap is how the cluster agent interacts with the snap.
 type Snap interface {
 	// GetGroupName is the group microk8s is using.
@@ -49,8 +63,8 @@ type Snap interface {
 
 	// HasKubeliteLock returns true if this MicroK8s instance is running Kubelite.
 	HasKubeliteLock() bool
-	// HasDqliteLock returns true if this MicroK8s instance is running dqlite.
-	HasDqliteLock() bool
+	// GetDataStore returns the data store used by this MicroK8s instance.
+	GetDataStore() DataStore
 	// HasNoCertsReissueLock returns true if the lock file to prevent reissue of the CA certificates is present in this MicroK8s instance.
 	HasNoCertsReissueLock() bool
 	// CreateNoCertsReissueLock creates the lock file to prevent reissue of CA certificates in this MicroK8s instance.

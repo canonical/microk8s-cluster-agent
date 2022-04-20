@@ -3,8 +3,8 @@ package snap
 import (
 	"context"
 	"fmt"
-	"os"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -168,8 +168,15 @@ func (s *snap) HasKubeliteLock() bool {
 	return util.FileExists(s.snapDataPath("var", "lock", "lite.lock"))
 }
 
-func (s *snap) HasDqliteLock() bool {
-	return util.FileExists(s.snapDataPath("var", "lock", "ha-cluster"))
+func (s *snap) GetDataStore() DataStore {
+	switch {
+	case util.FileExists(s.snapDataPath("var", "lock", "ha-etcd.lock")):
+		return EtcdDataStore
+	case util.FileExists(s.snapDataPath("var", "lock", "ha-cluster")):
+		return DqliteDataStore
+	default:
+		return SingleNodeEtcdDataStore
+	}
 }
 
 func (s *snap) HasNoCertsReissueLock() bool {
@@ -204,10 +211,10 @@ func (s *snap) ConsumeCertificateRequestToken(token string) bool {
 	certRequestTokensFile := s.snapDataPath("credentials", "certs-request-tokens.txt")
 	isValid, _ := util.IsValidToken(token, certRequestTokensFile)
 	if isValid {
-	if err := util.RemoveToken(token, certRequestTokensFile, s.GetGroupName()); err != nil {
-		log.Printf("Failed to remove certificate request token: %v", err)
+		if err := util.RemoveToken(token, certRequestTokensFile, s.GetGroupName()); err != nil {
+			log.Printf("Failed to remove certificate request token: %v", err)
+		}
 	}
-}
 	return isValid
 }
 

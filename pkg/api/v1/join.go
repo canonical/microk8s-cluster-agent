@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 )
@@ -48,7 +49,7 @@ func (a *API) Join(ctx context.Context, request JoinRequest) (*JoinResponse, err
 		return nil, fmt.Errorf("invalid token")
 	}
 
-	if a.Snap.HasDqliteLock() {
+	if a.Snap.GetDataStore() != snap.SingleNodeEtcdDataStore {
 		return nil, fmt.Errorf("failed to join the cluster. This is an HA MicroK8s cluster.\nPlease retry after enabling HA on this joining node with 'microk8s enable ha-cluster'")
 	}
 

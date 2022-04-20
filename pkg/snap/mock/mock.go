@@ -35,7 +35,7 @@ type Snap struct {
 	KubeconfigFile string
 
 	KubeliteLock                       bool
-	DqliteLock                         bool
+	DataStore                          snap.DataStore
 	NoCertsReissueLock                 bool
 	CreateNoCertsReissueLockCalledWith []struct{}
 
@@ -151,9 +151,9 @@ func (s *Snap) HasKubeliteLock() bool {
 	return s.KubeliteLock
 }
 
-// HasDqliteLock is a mock implementation for the snap.Snap interface.
-func (s *Snap) HasDqliteLock() bool {
-	return s.DqliteLock
+// GetDataStore is a mock implementation for the snap.Snap interface.
+func (s *Snap) GetDataStore() snap.DataStore {
+	return s.DataStore
 }
 
 // HasNoCertsReissueLock is a mock implementation for the snap.Snap interface.

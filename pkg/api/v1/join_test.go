@@ -7,12 +7,14 @@ import (
 	"testing"
 
 	v1 "github.com/canonical/microk8s-cluster-agent/pkg/api/v1"
+	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap/mock"
 )
 
 func TestJoin(t *testing.T) {
 	s := &mock.Snap{
-		CA: "CA CERTIFICATE DATA",
+		DataStore: snap.SingleNodeEtcdDataStore,
+		CA:        "CA CERTIFICATE DATA",
 		ServiceArguments: map[string]string{
 			"etcd":           "--listen-client-urls=https://0.0.0.0:12379",
 			"kube-apiserver": "--secure-port 16443",
@@ -45,7 +47,7 @@ func TestJoin(t *testing.T) {
 	})
 
 	t.Run("Dqlite", func(t *testing.T) {
-		s.DqliteLock = true
+		s.DataStore = snap.DqliteDataStore
 		resp, err := apiv1.Join(context.Background(), v1.JoinRequest{
 			ClusterToken: "valid-other-token",
 		})
@@ -55,7 +57,7 @@ func TestJoin(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected an error due to kubelite lock, but did not get any")
 		}
-		s.DqliteLock = false
+		s.DataStore = snap.SingleNodeEtcdDataStore
 	})
 
 	t.Run("Success", func(t *testing.T) {
