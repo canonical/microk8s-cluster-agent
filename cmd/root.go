@@ -9,6 +9,7 @@ import (
 
 	v1 "github.com/canonical/microk8s-cluster-agent/pkg/api/v1"
 	v2 "github.com/canonical/microk8s-cluster-agent/pkg/api/v2"
+	v3 "github.com/canonical/microk8s-cluster-agent/pkg/api/v3"
 	"github.com/canonical/microk8s-cluster-agent/pkg/server"
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
@@ -42,7 +43,12 @@ lifecycle of a MicroK8s cluster.`,
 			LookupIP:                net.LookupIP,
 			ListControlPlaneNodeIPs: snaputil.ListControlPlaneNodeIPs,
 		}
-		srv := server.NewServer(time.Duration(timeout)*time.Second, enableMetrics, apiv1.RegisterServer, apiv2.RegisterServer)
+		apiv3 := &v3.API{
+			Snap:                    s,
+			LookupIP:                net.LookupIP,
+			ListControlPlaneNodeIPs: snaputil.ListControlPlaneNodeIPs,
+		}
+		srv := server.NewServer(time.Duration(timeout)*time.Second, enableMetrics, apiv1.RegisterServer, apiv2.RegisterServer, apiv3.RegisterServer)
 		log.Printf("Starting cluster agent on https://%s\n", bind)
 		if err := http.ListenAndServeTLS(bind, certfile, keyfile, srv); err != nil {
 			log.Fatalf("Failed to listen: %s", err)

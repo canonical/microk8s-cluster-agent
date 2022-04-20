@@ -30,6 +30,9 @@ type Snap struct {
 	DqliteClusterYaml string
 	DqliteInfoYaml    string
 
+	EtcdCA    string
+	EtcdCAKey string
+
 	WriteDqliteUpdateYamlCalledWith []string
 
 	KubeconfigFile string
@@ -294,6 +297,16 @@ func (s *Snap) SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, erro
 	}
 	s.SignCertificateCalledWith = append(s.SignCertificateCalledWith, string(csrPEM))
 	return []byte(s.SignedCertificate), nil
+}
+
+// ReadEtcdCA is a mock implementation for the snap.Snap interface.
+func (s *Snap) ReadEtcdCA() (string, error) {
+	return s.EtcdCA, nil
+}
+
+// ReadEtcdCAKey is a mock implementation for the snap.Snap interface.
+func (s *Snap) ReadEtcdCAKey() (string, error) {
+	return s.EtcdCAKey, nil
 }
 
 var _ snap.Snap = &Snap{}

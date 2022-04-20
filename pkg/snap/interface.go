@@ -61,6 +61,11 @@ type Snap interface {
 	// GetKubeconfigFile returns the path to the client kubeconfig file.
 	GetKubeconfigFile() string
 
+	// ReadEtcdCA returns the certificate authority for the HA etcd cluster in PEM format.
+	ReadEtcdCA() (string, error)
+	// ReadEtcdCAKey returns the certificate authority private key for the HA etcd cluster in PEM format.
+	ReadEtcdCAKey() (string, error)
+
 	// HasKubeliteLock returns true if this MicroK8s instance is running Kubelite.
 	HasKubeliteLock() bool
 	// GetDataStore returns the data store used by this MicroK8s instance.

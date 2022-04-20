@@ -300,4 +300,14 @@ func (s *snap) SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, erro
 	return certificateBytes, nil
 }
 
+// ReadEtcdCA returns the certificate authority for the HA etcd cluster in PEM format.
+func (s *snap) ReadEtcdCA() (string, error) {
+	return util.ReadFile(s.snapDataPath("certs", "etcdadm", "ca.crt"))
+}
+
+// ReadEtcdCAKey returns the certificate authority private key for the HA etcd cluster in PEM format.
+func (s *snap) ReadEtcdCAKey() (string, error) {
+	return util.ReadFile(s.snapDataPath("certs", "etcdadm", "ca.key"))
+}
+
 var _ Snap = &snap{}
