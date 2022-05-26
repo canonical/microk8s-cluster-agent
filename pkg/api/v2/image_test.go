@@ -3,6 +3,7 @@ package v2_test
 import (
 	"bytes"
 	"context"
+	"net/http"
 	"reflect"
 	"testing"
 
@@ -21,12 +22,15 @@ func TestImageImport(t *testing.T) {
 		reader := &recordingReader{
 			Reader: bytes.NewBufferString("IMAGEDATA"),
 		}
-		err := apiv2.ImageImport(context.Background(), &v2.ImageImportRequest{
+		rc, err := apiv2.ImageImport(context.Background(), &v2.ImageImportRequest{
 			Token:           "invalid-token",
 			ImageDataReader: reader,
 		})
 		if err == nil {
 			t.Fatal("Expected an error but did not receive any")
+		}
+		if rc < 400 {
+			t.Fatalf("Expected an error response code but received %v", rc)
 		}
 		if len(reader.CountReadBytes) > 0 {
 			t.Fatalf("Expected no Read calls for the image contents, but got one")
@@ -37,12 +41,15 @@ func TestImageImport(t *testing.T) {
 		reader := &recordingReader{
 			Reader: bytes.NewBufferString("IMAGEDATA"),
 		}
-		err := apiv2.ImageImport(context.Background(), &v2.ImageImportRequest{
+		rc, err := apiv2.ImageImport(context.Background(), &v2.ImageImportRequest{
 			Token:           "valid-token",
 			ImageDataReader: reader,
 		})
 		if err != nil {
 			t.Fatalf("Expected no errors but received %q", err)
+		}
+		if rc != http.StatusOK {
+			t.Fatalf("Expected an HTTP 200 response code, but received %v", rc)
 		}
 		if len(reader.CountReadBytes) == 0 {
 			t.Fatalf("Expected Read calls for the image contents, but did not get any")

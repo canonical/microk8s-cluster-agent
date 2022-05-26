@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 )
 
 // ImageImportRequest is a request for importing an image to the container runtime.
@@ -18,23 +19,23 @@ type ImageImportRequest struct {
 }
 
 // ImageImport implements "POST CLUSTER_API_V2/images/import"
-func (a *API) ImageImport(ctx context.Context, req *ImageImportRequest) error {
+func (a *API) ImageImport(ctx context.Context, req *ImageImportRequest) (int, error) {
 	if !a.Snap.ConsumeSelfCallbackToken(req.Token) {
-		return fmt.Errorf("invalid token")
+		return http.StatusUnauthorized, fmt.Errorf("invalid token")
 	}
 
 	if req.ImageDataReader == nil {
-		return fmt.Errorf("no image data")
+		return http.StatusBadRequest, fmt.Errorf("no image data")
 	}
 	b, err := ioutil.ReadAll(req.ImageDataReader)
 	if err != nil {
-		return fmt.Errorf("failed to read the image data contents: %w", err)
+		return http.StatusBadRequest, fmt.Errorf("failed to read the image data contents: %w", err)
 	}
 
 	// TODO(neoaggelos): we might want to ignore the errors
 	if err := a.Snap.ImportImage(ctx, b); err != nil {
-		return fmt.Errorf("failed to import the image: %w", err)
+		return http.StatusInternalServerError, fmt.Errorf("failed to import the image: %w", err)
 	}
 
-	return nil
+	return http.StatusOK, nil
 }
