@@ -58,6 +58,8 @@ type Snap struct {
 
 	SignCertificateCalledWith []string // string(csrPEM)
 	SignedCertificate         string
+
+	ImportImageCalledWith []string // string(image)
 }
 
 // GetGroupName is a mock implementation for the snap.Snap interface.
@@ -294,6 +296,15 @@ func (s *Snap) SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, erro
 	}
 	s.SignCertificateCalledWith = append(s.SignCertificateCalledWith, string(csrPEM))
 	return []byte(s.SignedCertificate), nil
+}
+
+// ImportImage is a mock implementation for the snap.Snap interface.
+func (s *Snap) ImportImage(ctx context.Context, image []byte) error {
+	if s.ImportImageCalledWith == nil {
+		s.ImportImageCalledWith = make([]string, 0, 1)
+	}
+	s.ImportImageCalledWith = append(s.ImportImageCalledWith, string(image))
+	return nil
 }
 
 var _ snap.Snap = &Snap{}

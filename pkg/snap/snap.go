@@ -2,9 +2,11 @@ package snap
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
-	"os"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -204,10 +206,10 @@ func (s *snap) ConsumeCertificateRequestToken(token string) bool {
 	certRequestTokensFile := s.snapDataPath("credentials", "certs-request-tokens.txt")
 	isValid, _ := util.IsValidToken(token, certRequestTokensFile)
 	if isValid {
-	if err := util.RemoveToken(token, certRequestTokensFile, s.GetGroupName()); err != nil {
-		log.Printf("Failed to remove certificate request token: %v", err)
+		if err := util.RemoveToken(token, certRequestTokensFile, s.GetGroupName()); err != nil {
+			log.Printf("Failed to remove certificate request token: %v", err)
+		}
 	}
-}
 	return isValid
 }
 
@@ -291,6 +293,16 @@ func (s *snap) SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, erro
 	}
 
 	return certificateBytes, nil
+}
+
+func (s *snap) ImportImage(ctx context.Context, image []byte) error {
+	microk8sCtr := s.snapPath("microk8s-ctr.wrapper")
+	path := s.snapDataPath(fmt.Sprintf("image-%s.tar", hex.EncodeToString(sha256.New().Sum(image))))
+	err := s.runCommand(ctx, microk8sCtr, "image", "import", path)
+	if err != nil {
+		return fmt.Errorf("microk8s.ctr command failed: %w", err)
+	}
+	return nil
 }
 
 var _ Snap = &snap{}
