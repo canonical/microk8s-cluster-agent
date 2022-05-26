@@ -1,6 +1,7 @@
 package snap
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -278,20 +279,13 @@ func (s *snap) SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, erro
 		"-CA", s.snapDataPath("certs", "ca.crt"), "-CAkey", s.snapDataPath("certs", "ca.key"),
 		"-CAcreateserial", "-days", "3650",
 	)
-	stdin, err := signCmd.StdinPipe()
-	if err != nil {
-		return nil, fmt.Errorf("could not create stdin pipe for sign command: %w", err)
-	}
-	if _, err := stdin.Write(csrPEM); err != nil {
-		return nil, fmt.Errorf("could not write certificate request to openssl command: %w", err)
-	}
-	stdin.Close()
-	certificateBytes, err := signCmd.Output()
-	if err != nil {
+	signCmd.Stdin = bytes.NewBuffer(csrPEM)
+	stdout := &bytes.Buffer{}
+	signCmd.Stdout = stdout
+	if err := signCmd.Run(); err != nil {
 		return nil, fmt.Errorf("openssl failed: %w", err)
 	}
-
-	return certificateBytes, nil
+	return stdout.Bytes(), nil
 }
 
 func (s *snap) ImportImage(ctx context.Context, reader io.Reader) error {
