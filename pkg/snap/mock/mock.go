@@ -3,6 +3,8 @@ package mock
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
@@ -59,7 +61,7 @@ type Snap struct {
 	SignCertificateCalledWith []string // string(csrPEM)
 	SignedCertificate         string
 
-	ImportImageCalledWith []string // string(image)
+	ImportImageCalledWith []string // string(io.ReadAll(reader))
 }
 
 // GetGroupName is a mock implementation for the snap.Snap interface.
@@ -299,11 +301,12 @@ func (s *Snap) SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, erro
 }
 
 // ImportImage is a mock implementation for the snap.Snap interface.
-func (s *Snap) ImportImage(ctx context.Context, image []byte) error {
+func (s *Snap) ImportImage(ctx context.Context, reader io.Reader) error {
 	if s.ImportImageCalledWith == nil {
 		s.ImportImageCalledWith = make([]string, 0, 1)
 	}
-	s.ImportImageCalledWith = append(s.ImportImageCalledWith, string(image))
+	b, _ := ioutil.ReadAll(reader)
+	s.ImportImageCalledWith = append(s.ImportImageCalledWith, string(b))
 	return nil
 }
 

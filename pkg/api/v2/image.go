@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -27,13 +26,9 @@ func (a *API) ImageImport(ctx context.Context, req *ImageImportRequest) (int, er
 	if req.ImageDataReader == nil {
 		return http.StatusBadRequest, fmt.Errorf("no image data")
 	}
-	b, err := ioutil.ReadAll(req.ImageDataReader)
-	if err != nil {
-		return http.StatusBadRequest, fmt.Errorf("failed to read the image data contents: %w", err)
-	}
 
 	// TODO(neoaggelos): we might want to ignore the errors
-	if err := a.Snap.ImportImage(ctx, b); err != nil {
+	if err := a.Snap.ImportImage(ctx, req.ImageDataReader); err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("failed to import the image: %w", err)
 	}
 

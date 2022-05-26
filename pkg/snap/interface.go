@@ -2,6 +2,7 @@ package snap
 
 import (
 	"context"
+	"io"
 )
 
 // Snap is how the cluster agent interacts with the snap.
@@ -89,5 +90,5 @@ type Snap interface {
 	SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, error)
 
 	// ImportImage imports an OCI image from raw bytes.
-	ImportImage(ctx context.Context, image []byte) error
+	ImportImage(ctx context.Context, reader io.Reader) error
 }

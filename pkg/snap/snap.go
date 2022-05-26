@@ -2,9 +2,8 @@ package snap
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -295,11 +294,13 @@ func (s *snap) SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, erro
 	return certificateBytes, nil
 }
 
-func (s *snap) ImportImage(ctx context.Context, image []byte) error {
-	microk8sCtr := s.snapPath("microk8s-ctr.wrapper")
-	path := s.snapDataPath(fmt.Sprintf("image-%s.tar", hex.EncodeToString(sha256.New().Sum(image))))
-	err := s.runCommand(ctx, microk8sCtr, "image", "import", path)
-	if err != nil {
+func (s *snap) ImportImage(ctx context.Context, reader io.Reader) error {
+	importCmd := exec.CommandContext(ctx, s.snapPath("microk8s-ctr.wrapper"), "image", "import", "-")
+	importCmd.Stdin = reader
+	importCmd.Stdout = os.Stdout
+	importCmd.Stdout = os.Stderr
+
+	if err := importCmd.Run(); err != nil {
 		return fmt.Errorf("microk8s.ctr command failed: %w", err)
 	}
 	return nil
