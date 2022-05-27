@@ -2,6 +2,7 @@ package snap
 
 import (
 	"context"
+	"io"
 )
 
 // Snap is how the cluster agent interacts with the snap.
@@ -87,4 +88,7 @@ type Snap interface {
 
 	// SignCertificate signs the certificate signing request, and returns the certificate in PEM format.
 	SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, error)
+
+	// ImportImage imports an OCI image from raw bytes.
+	ImportImage(ctx context.Context, reader io.Reader) error
 }

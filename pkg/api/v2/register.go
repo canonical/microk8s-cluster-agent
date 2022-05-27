@@ -34,4 +34,23 @@ func (a *API) RegisterServer(server *http.ServeMux, middleware func(f http.Handl
 		}
 		httputil.Response(w, response)
 	}))
+
+	// POST v2/image/import
+	server.HandleFunc(fmt.Sprintf("%s/image/import", HTTPPrefix), middleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		req := &ImageImportRequest{
+			Token:           r.Header.Get("x-microk8s-callback-token"),
+			ImageDataReader: r.Body,
+		}
+		rc, err := a.ImageImport(r.Context(), req)
+		if err != nil {
+			httputil.Error(w, rc, err)
+			return
+		}
+		httputil.Response(w, map[string]string{"status": "OK"})
+	}))
 }
