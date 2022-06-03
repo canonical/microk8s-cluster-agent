@@ -89,8 +89,9 @@ func AppendToken(token string, tokensFile string, chownGroup string) error {
 }
 
 // RemoveToken removes a token from a tokens file, if it exists.
-// Missing tokens do not cause errors.
-// Reading or writing back the token file will return an error.
+// RemoveToken will not return an error if the token does not exist.
+// RemoveToken will only the first occurence of the token, if it exists multiple times in the tokens file.
+// RemoveToken will return an error if it fails to read or write the tokens file.
 func RemoveToken(token string, tokensFile string, chownGroup string) error {
 	b, err := os.ReadFile(tokensFile)
 	if err != nil {
@@ -100,19 +101,16 @@ func RemoveToken(token string, tokensFile string, chownGroup string) error {
 	if len(existingTokens) == 0 {
 		return nil
 	}
-	newTokens := make([]string, 0, len(existingTokens))
-	for _, tokenInFile := range existingTokens {
-		// TODO: this raised an issue with dummy tokens with the same prefix being removed
-		// This should not be an issue in real-life.
+	for idx, tokenInFile := range existingTokens {
 		if strings.HasPrefix(tokenInFile, token) {
-			continue
+			newTokens := append(existingTokens[:idx], existingTokens[idx+1:]...)
+			if err = os.WriteFile(tokensFile, []byte(strings.Join(newTokens, "\n")), 0660); err != nil {
+				return fmt.Errorf("failed to write %s: %w", tokensFile, err)
+			}
+			// TODO: consider whether permissions should be 0600 instead
+			SetupPermissions(tokensFile, chownGroup)
+			break
 		}
-		newTokens = append(newTokens, tokenInFile)
 	}
-	if err = os.WriteFile(tokensFile, []byte(strings.Join(newTokens, "\n")), 0660); err != nil {
-		return fmt.Errorf("failed to write %s: %w", tokensFile, err)
-	}
-	// TODO: consider whether permissions should be 0600 instead
-	SetupPermissions(tokensFile, chownGroup)
 	return nil
 }

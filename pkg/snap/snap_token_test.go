@@ -93,6 +93,19 @@ func TestCertificateRequestTokens(t *testing.T) {
 	if !s.ConsumeCertificateRequestToken("my-token") {
 		t.Fatal("Expected my-token to be a valid certificate request token, but it is not")
 	}
+
+	t.Run("Multiple", func(t *testing.T) {
+		for i := 0; i < 100; i++ {
+			if err := s.AddCertificateRequestToken("my-token"); err != nil {
+				t.Fatalf("Failed to add certificate request token: %s", err)
+			}
+		}
+		for i := 0; i < 100; i++ {
+			if !s.ConsumeCertificateRequestToken("my-token") {
+				t.Fatal("Expected my-token to be a valid re-usable certificate request token, but it is not")
+			}
+		}
+	})
 }
 
 func TestCallbackTokens(t *testing.T) {
