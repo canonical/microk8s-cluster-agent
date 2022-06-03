@@ -105,12 +105,15 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 	}
 
 	// Check node is not in cluster already.
+	a.dqliteMu.Lock()
 	dqliteCluster, err := snaputil.GetDqliteCluster(a.Snap)
 	if err != nil {
+		a.dqliteMu.Unlock()
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster nodes: %w", err)
 	}
 	for _, node := range dqliteCluster {
 		if strings.HasPrefix(node.Address, remoteIP+":") {
+			a.dqliteMu.Unlock()
 			return nil, http.StatusGatewayTimeout, fmt.Errorf("the joining node (%s) is already known to dqlite", remoteIP)
 		}
 	}
@@ -119,6 +122,7 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 	if len(dqliteCluster) == 1 && strings.HasPrefix(dqliteCluster[0].Address, "127.0.0.1:") {
 		requestHost, _, _ := net.SplitHostPort(req.HostPort)
 		if err := snaputil.UpdateDqliteIP(ctx, a.Snap, requestHost); err != nil {
+			a.dqliteMu.Unlock()
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update dqlite address to %q: %w", requestHost, err)
 		}
 
@@ -127,9 +131,11 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 			return len(c) >= 1 && !strings.HasPrefix(c[0].Address, "127.0.0.1:"), nil
 		})
 		if err != nil {
+			a.dqliteMu.Unlock()
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed waiting for dqlite cluster to come up: %w", err)
 		}
 	}
+	a.dqliteMu.Unlock()
 
 	callbackToken, err := a.Snap.GetOrCreateSelfCallbackToken()
 	if err != nil {
@@ -145,9 +151,12 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to read arguments of kubelet service: %w", err)
 	}
 
+	a.calicoMu.Lock()
 	if err := snaputil.MaybePatchCalicoAutoDetectionMethod(ctx, a.Snap, remoteIP, true); err != nil {
+		a.calicoMu.Unlock()
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update cni configuration: %w", err)
 	}
+	a.calicoMu.Unlock()
 
 	if err := a.Snap.CreateNoCertsReissueLock(); err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create lock file to disable certificate reissuing: %w", err)
