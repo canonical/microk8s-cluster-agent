@@ -2,6 +2,7 @@ package v2
 
 import (
 	"net"
+	"sync"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 )
@@ -17,4 +18,10 @@ type API struct {
 
 	// LookupIP is net.LookupIP.
 	LookupIP func(string) ([]net.IP, error)
+
+	// dqliteMu protects changes involving the dqlite service.
+	dqliteMu sync.Mutex
+
+	// calicoMu protects changes involving the calico CNI.
+	calicoMu sync.Mutex
 }

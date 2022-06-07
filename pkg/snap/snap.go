@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 	"gopkg.in/yaml.v2"
@@ -20,12 +21,21 @@ type snap struct {
 	snapDir     string
 	snapDataDir string
 	runCommand  func(context.Context, ...string) error
+
+	clusterTokensMu  sync.Mutex
+	certTokensMu     sync.Mutex
+	callbackTokensMu sync.Mutex
+	knownTokensMu    sync.Mutex
 }
 
 // NewSnap creates a new interface with the MicroK8s snap.
 // NewSnap accepts the $SNAP and $SNAP_DATA directories, as well as a function that executes shell commands.
 func NewSnap(snapDir, snapDataDir string, runCommand func(context.Context, ...string) error) Snap {
-	return &snap{snapDir, snapDataDir, runCommand}
+	return &snap{
+		snapDir:     snapDir,
+		snapDataDir: snapDataDir,
+		runCommand:  runCommand,
+	}
 }
 
 func (s *snap) snapPath(parts ...string) string {
@@ -192,6 +202,8 @@ func (s *snap) WriteServiceArguments(serviceName string, arguments []byte) error
 }
 
 func (s *snap) ConsumeClusterToken(token string) bool {
+	s.clusterTokensMu.Lock()
+	defer s.clusterTokensMu.Unlock()
 	clusterTokensFile := s.snapDataPath("credentials", "cluster-tokens.txt")
 	isValid, hasTTL := util.IsValidToken(token, clusterTokensFile)
 	if isValid && !hasTTL {
@@ -203,6 +215,8 @@ func (s *snap) ConsumeClusterToken(token string) bool {
 }
 
 func (s *snap) ConsumeCertificateRequestToken(token string) bool {
+	s.certTokensMu.Lock()
+	defer s.certTokensMu.Unlock()
 	certRequestTokensFile := s.snapDataPath("credentials", "certs-request-tokens.txt")
 	isValid, _ := util.IsValidToken(token, certRequestTokensFile)
 	if isValid {
@@ -219,14 +233,20 @@ func (s *snap) ConsumeSelfCallbackToken(token string) bool {
 }
 
 func (s *snap) AddCertificateRequestToken(token string) error {
+	s.certTokensMu.Lock()
+	defer s.certTokensMu.Unlock()
 	return util.AppendToken(token, s.snapDataPath("credentials", "certs-request-tokens.txt"), s.GetGroupName())
 }
 
 func (s *snap) AddCallbackToken(clusterAgentEndpoint string, token string) error {
+	s.callbackTokensMu.Lock()
+	defer s.callbackTokensMu.Unlock()
 	return util.AppendToken(fmt.Sprintf("%s %s", clusterAgentEndpoint, token), s.snapDataPath("credentials", "callback-tokens.txt"), s.GetGroupName())
 }
 
 func (s *snap) GetOrCreateSelfCallbackToken() (string, error) {
+	s.callbackTokensMu.Lock()
+	defer s.callbackTokensMu.Unlock()
 	callbackTokenFile := s.snapDataPath("credentials", "callback-token.txt")
 	c, err := util.ReadFile(callbackTokenFile)
 	if err != nil {
@@ -249,6 +269,8 @@ func (s *snap) GetOrCreateKubeletToken(hostname string) (string, error) {
 	token := util.NewRandomString(util.Alpha, 32)
 	uid := util.NewRandomString(util.Digits, 8)
 
+	s.knownTokensMu.Lock()
+	defer s.knownTokensMu.Unlock()
 	if err := util.AppendToken(fmt.Sprintf("%s,%s,kubelet-%s,\"system:nodes\"", token, user, uid), s.snapDataPath("credentials", "known_tokens.csv"), s.GetGroupName()); err != nil {
 		return "", fmt.Errorf("failed to add new kubelet token for %s: %w", user, err)
 	}
@@ -257,6 +279,8 @@ func (s *snap) GetOrCreateKubeletToken(hostname string) (string, error) {
 }
 
 func (s *snap) GetKnownToken(username string) (string, error) {
+	s.knownTokensMu.Lock()
+	defer s.knownTokensMu.Unlock()
 	allTokens, err := util.ReadFile(s.snapDataPath("credentials", "known_tokens.csv"))
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve known token for user %s: %w", username, err)
