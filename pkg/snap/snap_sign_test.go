@@ -90,7 +90,7 @@ func TestSignCert(t *testing.T) {
 		t.Fatalf("Failed to write test certificate key: %s", err)
 	}
 
-	s := snap.NewSnap("testdata", "testdata", nil)
+	s := snap.NewSnap("testdata", "testdata")
 
 	certificate, err := s.SignCertificate(context.Background(), []byte(csrPEM))
 	if err != nil {

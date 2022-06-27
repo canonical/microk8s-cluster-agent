@@ -13,7 +13,7 @@ import (
 
 func TestClusterTokens(t *testing.T) {
 	os.RemoveAll("testdata/credentials")
-	s := snap.NewSnap("testdata", "testdata", nil)
+	s := snap.NewSnap("testdata", "testdata")
 	t.Run("MissingTokensFile", func(t *testing.T) {
 		if s.ConsumeClusterToken("token1") {
 			t.Fatal("Expected token1 to not be valid, but it is")
@@ -79,7 +79,7 @@ func TestCertificateRequestTokens(t *testing.T) {
 		t.Fatalf("Failed to create test directory: %s", err)
 	}
 	defer os.RemoveAll("testdata/credentials")
-	s := snap.NewSnap("testdata", "testdata", nil)
+	s := snap.NewSnap("testdata", "testdata")
 	if err := s.AddCertificateRequestToken("my-token"); err != nil {
 		t.Fatalf("Failed to add certificate request token: %s", err)
 	}
@@ -113,7 +113,7 @@ func TestCallbackTokens(t *testing.T) {
 		t.Fatalf("Failed to create test directory: %s", err)
 	}
 	defer os.RemoveAll("testdata/credentials")
-	s := snap.NewSnap("testdata", "testdata", nil)
+	s := snap.NewSnap("testdata", "testdata")
 	if err := s.AddCallbackToken("ip:port", "my-token"); err != nil {
 		t.Fatalf("Failed to add certificate request token: %s", err)
 	}
@@ -131,7 +131,7 @@ func TestSelfCallbackToken(t *testing.T) {
 		t.Fatalf("Failed to create test directory: %s", err)
 	}
 	defer os.RemoveAll("testdata/credentials")
-	s := snap.NewSnap("testdata", "testdata", nil)
+	s := snap.NewSnap("testdata", "testdata")
 	token, err := s.GetOrCreateSelfCallbackToken()
 	if err != nil {
 		t.Fatalf("Failed to configure callback token: %q", err)
@@ -156,7 +156,7 @@ func TestKnownTokens(t *testing.T) {
 		t.Fatalf("Failed to create test directory: %s", err)
 	}
 	defer os.RemoveAll("testdata/credentials")
-	s := snap.NewSnap("testdata", "testdata", nil)
+	s := snap.NewSnap("testdata", "testdata")
 	if token, err := s.GetKnownToken("user"); token != "" || err == nil {
 		t.Fatalf("Expected an empty token and an error, but found token %s and error %s", token, err)
 	}
@@ -235,7 +235,7 @@ func TestStrictGroup(t *testing.T) {
 		if err := os.WriteFile("testdata/meta/snapcraft.yaml", []byte(fmt.Sprintf("confinement: %s", tc.confinement)), 0660); err != nil {
 			t.Fatalf("Failed to create test file: %s", err)
 		}
-		group := snap.NewSnap("testdata", "testdata", nil).GetGroupName()
+		group := snap.NewSnap("testdata", "testdata").GetGroupName()
 		if tc.group != group {
 			t.Fatalf("Expected group to be %q but it was %q instead", tc.group, group)
 		}

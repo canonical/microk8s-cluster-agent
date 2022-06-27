@@ -29,13 +29,19 @@ type snap struct {
 }
 
 // NewSnap creates a new interface with the MicroK8s snap.
-// NewSnap accepts the $SNAP and $SNAP_DATA directories, as well as a function that executes shell commands.
-func NewSnap(snapDir, snapDataDir string, runCommand func(context.Context, ...string) error) Snap {
-	return &snap{
+// NewSnap accepts the $SNAP and $SNAP_DATA directories, and a number of options.
+func NewSnap(snapDir, snapDataDir string, options ...func(s *snap)) Snap {
+	s := &snap{
 		snapDir:     snapDir,
 		snapDataDir: snapDataDir,
-		runCommand:  runCommand,
+		runCommand:  util.RunCommand,
 	}
+
+	for _, opt := range options {
+		opt(s)
+	}
+	return s
+
 }
 
 func (s *snap) snapPath(parts ...string) string {

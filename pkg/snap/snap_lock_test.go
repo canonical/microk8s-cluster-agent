@@ -9,7 +9,7 @@ import (
 )
 
 func TestLock(t *testing.T) {
-	s := snap.NewSnap("testdata", "testdata", nil)
+	s := snap.NewSnap("testdata", "testdata")
 	if err := os.MkdirAll("testdata/var/lock", 0755); err != nil {
 		t.Fatalf("Failed to create directory: %s", err)
 	}
