@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -153,8 +154,7 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 
 	a.calicoMu.Lock()
 	if err := snaputil.MaybePatchCalicoAutoDetectionMethod(ctx, a.Snap, remoteIP, true); err != nil {
-		a.calicoMu.Unlock()
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to update cni configuration: %w", err)
+		log.Printf("WARNING: failed to update cni configuration: %q", err)
 	}
 	a.calicoMu.Unlock()
 
