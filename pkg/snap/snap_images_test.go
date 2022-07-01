@@ -31,7 +31,7 @@ func TestImportImage(t *testing.T) {
 		os.Remove("testdata/arguments")
 	}()
 	mockRunner := &utiltest.MockRunner{}
-	s := snap.NewSnap("testdata", "testdata", mockRunner.Run)
+	s := snap.NewSnap("testdata", "testdata", snap.WithCommandRunner(mockRunner.Run))
 
 	err := s.ImportImage(context.Background(), bytes.NewBufferString("IMAGEDATA"))
 	if err != nil {

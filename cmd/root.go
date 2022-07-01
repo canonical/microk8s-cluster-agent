@@ -12,7 +12,6 @@ import (
 	"github.com/canonical/microk8s-cluster-agent/pkg/server"
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
-	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +31,11 @@ var rootCmd = &cobra.Command{
 lifecycle of a MicroK8s cluster.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		s := snap.NewSnap(os.Getenv("SNAP"), os.Getenv("SNAP_DATA"), util.RunCommand)
+		s := snap.NewSnap(
+			os.Getenv("SNAP"),
+			os.Getenv("SNAP_DATA"),
+			snap.WithRetryApplyCNI(20, 3*time.Second),
+		)
 		apiv1 := &v1.API{
 			Snap:     s,
 			LookupIP: net.LookupIP,

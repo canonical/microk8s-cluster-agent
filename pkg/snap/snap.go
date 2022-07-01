@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 	"gopkg.in/yaml.v2"
@@ -26,16 +27,25 @@ type snap struct {
 	certTokensMu     sync.Mutex
 	callbackTokensMu sync.Mutex
 	knownTokensMu    sync.Mutex
+
+	applyCNIRetries int
+	applyCNIBackoff time.Duration
 }
 
 // NewSnap creates a new interface with the MicroK8s snap.
-// NewSnap accepts the $SNAP and $SNAP_DATA directories, as well as a function that executes shell commands.
-func NewSnap(snapDir, snapDataDir string, runCommand func(context.Context, ...string) error) Snap {
-	return &snap{
+// NewSnap accepts the $SNAP and $SNAP_DATA directories, and a number of options.
+func NewSnap(snapDir, snapDataDir string, options ...func(s *snap)) Snap {
+	s := &snap{
 		snapDir:     snapDir,
 		snapDataDir: snapDataDir,
-		runCommand:  runCommand,
+		runCommand:  util.RunCommand,
 	}
+
+	for _, opt := range options {
+		opt(s)
+	}
+	return s
+
 }
 
 func (s *snap) snapPath(parts ...string) string {
@@ -149,7 +159,14 @@ func (s *snap) WriteCNIYaml(cniManifest []byte) error {
 }
 
 func (s *snap) ApplyCNI(ctx context.Context) error {
-	return s.runCommand(ctx, s.snapPath("microk8s-kubectl.wrapper"), "apply", "-f", s.GetCNIYamlPath())
+	var err error
+	for i := 0; i < s.applyCNIRetries; i++ {
+		if err = s.runCommand(ctx, s.snapPath("microk8s-kubectl.wrapper"), "apply", "-f", s.GetCNIYamlPath()); err == nil {
+			return nil
+		}
+		time.Sleep(s.applyCNIBackoff)
+	}
+	return fmt.Errorf("failed after %d retries: %w", s.applyCNIRetries, err)
 }
 
 func (s *snap) ReadDqliteCert() (string, error) {
