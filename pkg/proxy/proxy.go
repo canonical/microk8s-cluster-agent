@@ -35,7 +35,7 @@ func startProxy(ctx context.Context, listenURL string, endpointURLs []string) er
 		return fmt.Errorf("failed to start listener: %w", err)
 	}
 
-	p := TCPProxy{
+	p := tcpproxy{
 		Listener:        l,
 		Endpoints:       srvs,
 		MonitorInterval: time.Minute,

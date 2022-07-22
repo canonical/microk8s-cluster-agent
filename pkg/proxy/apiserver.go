@@ -16,12 +16,19 @@ type apiServerProxyConfig struct {
 	Endpoints []string `json:"endpoints"`
 }
 
+// APIServerProxy is a TCP proxy that forwards requests to the API Servers of the cluster.
 type APIServerProxy struct {
-	ConfigFile     string
+	// ConfigFile is the path to the config file of the apiserver proxy.
+	// ConfigFile contains configuration in JSON format.
+	ConfigFile string
+	// KubeconfigFile is the path to the kubeconfig file to use for updating the list of known apiservers.
+	// The known apiservers are retrieved from `kubectl get endpoints kubernetes`.
 	KubeconfigFile string
-	RefreshCh      <-chan time.Time
+	// RefreshCh is used to check for updates in the list of control plane nodes in the cluster.
+	RefreshCh <-chan time.Time
 }
 
+// Run starts the proxy.
 func (p *APIServerProxy) Run(ctx context.Context) error {
 	b, err := os.ReadFile(p.ConfigFile)
 	if err != nil {

@@ -60,7 +60,7 @@ func (r *remote) isActive() bool {
 	return !r.inactive
 }
 
-type TCPProxy struct {
+type tcpproxy struct {
 	Listener        net.Listener
 	Endpoints       []*net.SRV
 	MonitorInterval time.Duration
@@ -72,7 +72,7 @@ type TCPProxy struct {
 	pickCount int // for round robin
 }
 
-func (tp *TCPProxy) Run() error {
+func (tp *tcpproxy) Run() error {
 	tp.donec = make(chan struct{})
 	if tp.MonitorInterval == 0 {
 		tp.MonitorInterval = 5 * time.Minute
@@ -99,7 +99,7 @@ func (tp *TCPProxy) Run() error {
 	}
 }
 
-func (tp *TCPProxy) pick() *remote {
+func (tp *tcpproxy) pick() *remote {
 	var weighted []*remote
 	var unweighted []*remote
 
@@ -156,7 +156,7 @@ func (tp *TCPProxy) pick() *remote {
 	return nil
 }
 
-func (tp *TCPProxy) serve(in net.Conn) {
+func (tp *tcpproxy) serve(in net.Conn) {
 	var (
 		err error
 		out net.Conn
@@ -194,7 +194,7 @@ func (tp *TCPProxy) serve(in net.Conn) {
 	in.Close()
 }
 
-func (tp *TCPProxy) runMonitor() {
+func (tp *tcpproxy) runMonitor() {
 	for {
 		select {
 		case <-time.After(tp.MonitorInterval):
@@ -218,7 +218,7 @@ func (tp *TCPProxy) runMonitor() {
 	}
 }
 
-func (tp *TCPProxy) Stop() {
+func (tp *tcpproxy) Stop() {
 	// graceful shutdown?
 	// shutdown current connections?
 	tp.Listener.Close()
