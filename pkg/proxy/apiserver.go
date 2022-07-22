@@ -11,11 +11,6 @@ import (
 	"time"
 )
 
-type apiServerProxyConfig struct {
-	Listen    string   `json:"listen"`
-	Endpoints []string `json:"endpoints"`
-}
-
 // APIServerProxy is a TCP proxy that forwards requests to the API Servers of the cluster.
 type APIServerProxy struct {
 	// ConfigFile is the path to the config file of the apiserver proxy.
