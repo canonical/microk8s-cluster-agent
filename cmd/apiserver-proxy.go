@@ -19,7 +19,9 @@ var (
 	apiServerProxyRefreshInterval time.Duration
 
 	apiServerProxyCmd = &cobra.Command{
-		Use: "apiserver-proxy",
+		Use:   "apiserver-proxy",
+		Short: "MicroK8s apiserver proxy",
+		Long:  `Local API server proxy for MicroK8s worker nodes. Forwards all requests to the active cluster API servers.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			p := &proxy.APIServerProxy{
 				ConfigFile:     apiServerProxyConfig,
@@ -40,7 +42,7 @@ var (
 
 func init() {
 	apiServerProxyCmd.Flags().StringVar(&apiServerProxyConfig, "config", filepath.Join(os.Getenv("SNAP_DATA"), "args", "apiserver-proxy-config"), "path to apiserver proxy config file")
-	apiServerProxyCmd.Flags().StringVar(&apiServerProxyKubeconfig, "kubeconfig", filepath.Join(os.Getenv("SNAP_DATA"), "credentials", "kubelet.config"), "path to kubeconfig file to use for updating control plane nodes")
+	apiServerProxyCmd.Flags().StringVar(&apiServerProxyKubeconfig, "kubeconfig", filepath.Join(os.Getenv("SNAP_DATA"), "credentials", "kubelet.config"), "path to kubeconfig file to use for updating list of known control plane nodes")
 	apiServerProxyCmd.Flags().DurationVar(&apiServerProxyRefreshInterval, "refresh-interval", 30*time.Second, "refresh interval")
 
 	rootCmd.AddCommand(apiServerProxyCmd)
