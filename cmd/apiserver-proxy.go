@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -23,6 +24,10 @@ var (
 		Short: "MicroK8s apiserver proxy",
 		Long:  `Local API server proxy for MicroK8s worker nodes. Forwards all requests to the active cluster API servers.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if apiServerProxyRefreshInterval < 10*time.Second {
+				log.Printf("Refresh interval %v is less than minimum of 10s. Using the minimum 10s instead.\n", apiServerProxyRefreshInterval)
+				apiServerProxyRefreshInterval = 10 * time.Second
+			}
 			p := &proxy.APIServerProxy{
 				ConfigFile:     apiServerProxyConfig,
 				KubeconfigFile: apiServerProxyKubeconfig,
