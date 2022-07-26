@@ -42,7 +42,11 @@ func startProxy(ctx context.Context, listenURL string, endpointURLs []string) er
 	}
 
 	log.Println("Starting proxy at", listenURL)
-	go p.Run()
+	go func() {
+		if err := p.Run(); err != nil {
+			log.Printf("proxy failed: %v\n", err)
+		}
+	}()
 
 	<-ctx.Done()
 	p.Stop()
