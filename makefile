@@ -2,7 +2,7 @@ all: cluster-agent
 
 .PHONY = go.fmt go.vet go.lint go.staticcheck go.test
 
-cluster-agent: **.go
+cluster-agent: *.go **/*.go go.mod go.sum
 	go build -ldflags '-s -w' -o cluster-agent ./main.go
 
 go.fmt:

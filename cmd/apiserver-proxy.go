@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	apiServerProxyConfig          string
+	apiServerProxyTraefikConfig   string
 	apiServerProxyKubeconfig      string
 	apiServerProxyRefreshInterval time.Duration
 
@@ -24,14 +24,21 @@ var (
 		Short: "MicroK8s apiserver proxy",
 		Long:  `Local API server proxy for MicroK8s worker nodes. Forwards all requests to the active cluster API servers.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if apiServerProxyRefreshInterval < 10*time.Second {
-				log.Printf("Refresh interval %v is less than minimum of 10s. Using the minimum 10s instead.\n", apiServerProxyRefreshInterval)
-				apiServerProxyRefreshInterval = 10 * time.Second
+			var refreshCh <-chan time.Time
+			if apiServerProxyRefreshInterval == 0 {
+				log.Println("Will not auto-refresh list of control plane endpoints")
+			} else {
+				if apiServerProxyRefreshInterval < 15*time.Second {
+					log.Printf("Refresh interval %v is less than minimum of 15s. Using the minimum 15s instead.\n", apiServerProxyRefreshInterval)
+					apiServerProxyRefreshInterval = 15 * time.Second
+				}
+				refreshCh = time.NewTicker(apiServerProxyRefreshInterval).C
 			}
+
 			p := &proxy.APIServerProxy{
-				ConfigFile:     apiServerProxyConfig,
-				KubeconfigFile: apiServerProxyKubeconfig,
-				RefreshCh:      time.NewTicker(apiServerProxyRefreshInterval).C,
+				TraefikConfigFile: apiServerProxyTraefikConfig,
+				KubeconfigFile:    apiServerProxyKubeconfig,
+				RefreshCh:         refreshCh,
 			}
 
 			ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -46,7 +53,7 @@ var (
 )
 
 func init() {
-	apiServerProxyCmd.Flags().StringVar(&apiServerProxyConfig, "config", filepath.Join(os.Getenv("SNAP_DATA"), "args", "apiserver-proxy-config"), "path to apiserver proxy config file")
+	apiServerProxyCmd.Flags().StringVar(&apiServerProxyTraefikConfig, "traefik-config", filepath.Join(os.Getenv("SNAP_DATA"), "args", "traefik", "traefik.yaml"), "path to apiserver proxy config file")
 	apiServerProxyCmd.Flags().StringVar(&apiServerProxyKubeconfig, "kubeconfig", filepath.Join(os.Getenv("SNAP_DATA"), "credentials", "kubelet.config"), "path to kubeconfig file to use for updating list of known control plane nodes")
 	apiServerProxyCmd.Flags().DurationVar(&apiServerProxyRefreshInterval, "refresh-interval", 30*time.Second, "refresh interval")
 
