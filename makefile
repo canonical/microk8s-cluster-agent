@@ -3,7 +3,7 @@ all: cluster-agent
 .PHONY = go.fmt go.vet go.lint go.staticcheck go.test
 
 cluster-agent: *.go **/*.go go.mod go.sum
-	go build -ldflags '-s -w' -o cluster-agent ./main.go
+	CGO_ENABLED=0 go build -ldflags '-s -w' -o cluster-agent ./main.go
 
 go.fmt:
 	go mod tidy
