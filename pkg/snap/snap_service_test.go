@@ -27,7 +27,7 @@ func TestServiceRestart(t *testing.T) {
 			{service: "kube-proxy", expectedCommand: "snapctl restart microk8s.daemon-proxy"},
 			{service: "kube-scheduler", expectedCommand: "snapctl restart microk8s.daemon-scheduler"},
 			{service: "kube-controller-manager", expectedCommand: "snapctl restart microk8s.daemon-controller-manager"},
-			{service: "k8s-dqlite", expectedCommand: "snapctl restart microk8s.daemon-k8s-dqlite"},
+			{service: "k8s-dqlite", expectedCommand: "snapctl restart microk8s.daemon-kubelite"},
 			{service: "cluster-agent", expectedCommand: "snapctl restart microk8s.daemon-cluster-agent"},
 			{service: "containerd", expectedCommand: "snapctl restart microk8s.daemon-containerd"},
 			{service: "microk8s.daemon-containerd", expectedCommand: "snapctl restart microk8s.daemon-containerd"},
@@ -58,7 +58,7 @@ func TestServiceRestart(t *testing.T) {
 			{service: "kubelet", expectedCommand: "snapctl restart microk8s.daemon-kubelite"},
 			{service: "scheduler", expectedCommand: "snapctl restart microk8s.daemon-kubelite"},
 			{service: "controller-manager", expectedCommand: "snapctl restart microk8s.daemon-kubelite"},
-			{service: "k8s-dqlite", expectedCommand: "snapctl restart microk8s.daemon-k8s-dqlite"},
+			{service: "k8s-dqlite", expectedCommand: "snapctl restart microk8s.daemon-kubelite"},
 			{service: "cluster-agent", expectedCommand: "snapctl restart microk8s.daemon-cluster-agent"},
 			{service: "containerd", expectedCommand: "snapctl restart microk8s.daemon-containerd"},
 		} {

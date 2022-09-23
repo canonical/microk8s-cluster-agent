@@ -100,6 +100,9 @@ func snapctlServiceName(serviceName string, hasKubelite bool) string {
 			serviceName = "kubelite"
 		}
 	}
+	if serviceName == "k8s-dqlite" {
+		serviceName = "kubelite"
+	}
 	if strings.HasPrefix(serviceName, "microk8s.daemon-") {
 		return serviceName
 	}
