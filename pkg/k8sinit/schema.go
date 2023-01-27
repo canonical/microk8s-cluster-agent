@@ -8,10 +8,11 @@ import (
 )
 
 const (
-	MinimumConfigFileVersionRequired  = 1
-	MaximumConfigFileVersionSupported = 1
+	minimumConfigFileVersionRequired  = 1
+	maximumConfigFileVersionSupported = 1
 )
 
+// AddonConfiguration specifies an addon to be enabled or disabled.
 type AddonConfiguration struct {
 	// Name of the addon to configure.
 	Name string `yaml:"name"`
@@ -28,7 +29,7 @@ type Configuration struct {
 	// Version of the configuration file format. Reserved for backwards-compatibility.
 	Version int `yaml:"version"`
 
-	// Addons is addon configuration.
+	// Addons is a list of addons to enable and/or disable.
 	Addons []AddonConfiguration `yaml:"addons"`
 }
 

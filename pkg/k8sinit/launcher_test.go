@@ -14,10 +14,10 @@ func TestConfigFileVersion(t *testing.T) {
 		version   int
 		expectErr bool
 	}{
-		{name: "newer", version: MaximumConfigFileVersionSupported + 1, expectErr: true},
-		{name: "unsupported", version: MinimumConfigFileVersionRequired - 1, expectErr: true},
-		{name: "latest", version: MaximumConfigFileVersionSupported, expectErr: false},
-		{name: "oldest", version: MaximumConfigFileVersionSupported, expectErr: false},
+		{name: "newer", version: maximumConfigFileVersionSupported + 1, expectErr: true},
+		{name: "unsupported", version: minimumConfigFileVersionRequired - 1, expectErr: true},
+		{name: "latest", version: maximumConfigFileVersionSupported, expectErr: false},
+		{name: "oldest", version: maximumConfigFileVersionSupported, expectErr: false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := Configuration{
@@ -61,7 +61,7 @@ func TestAddons(t *testing.T) {
 			s := &mock.Snap{}
 
 			l := NewLauncher(s)
-			if err := l.Apply(context.Background(), &Configuration{Version: MinimumConfigFileVersionRequired, Addons: tc.addons}); err != nil {
+			if err := l.Apply(context.Background(), &Configuration{Version: minimumConfigFileVersionRequired, Addons: tc.addons}); err != nil {
 				t.Fatalf("expected no error when applying configuration but got %q instead", err)
 			}
 
