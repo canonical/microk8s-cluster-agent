@@ -6,6 +6,14 @@ import (
 )
 
 func (l *Launcher) Apply(ctx context.Context, c *Configuration) error {
+	switch {
+	case c == nil:
+		return nil
+	case c.Version > MaximumConfigFileVersionSupported:
+		return fmt.Errorf("config file version is %v but the maximum version supported is %v", c.Version, MaximumConfigFileVersionSupported)
+	case c.Version < MinimumConfigFileVersionRequired:
+		return fmt.Errorf("config file version is %v but the minimum version required is %v", c.Version, MinimumConfigFileVersionRequired)
+	}
 
 	for _, addon := range c.Addons {
 		if err := l.applyAddon(ctx, addon); err != nil {

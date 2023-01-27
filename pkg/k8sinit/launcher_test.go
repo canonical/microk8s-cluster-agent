@@ -8,6 +8,32 @@ import (
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap/mock"
 )
 
+func TestConfigFileVersion(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		version   int
+		expectErr bool
+	}{
+		{name: "newer", version: MaximumConfigFileVersionSupported + 1, expectErr: true},
+		{name: "unsupported", version: MinimumConfigFileVersionRequired - 1, expectErr: true},
+		{name: "latest", version: MaximumConfigFileVersionSupported, expectErr: false},
+		{name: "oldest", version: MaximumConfigFileVersionSupported, expectErr: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := Configuration{
+				Version: tc.version,
+			}
+			err := NewLauncher(&mock.Snap{}).Apply(context.Background(), &cfg)
+			switch {
+			case err == nil && tc.expectErr:
+				t.Fatal("expected an error but did not receive any")
+			case err != nil && !tc.expectErr:
+				t.Fatalf("did not expect an error but received %q", err)
+			}
+		})
+	}
+}
+
 func TestAddons(t *testing.T) {
 	for _, tc := range []struct {
 		name                string

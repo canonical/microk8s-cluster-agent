@@ -7,6 +7,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	MinimumConfigFileVersionRequired  = 1
+	MaximumConfigFileVersionSupported = 1
+)
+
 type AddonConfiguration struct {
 	// Name of the addon to configure.
 	Name string `yaml:"name"`
