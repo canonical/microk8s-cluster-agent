@@ -3,7 +3,7 @@ package httputil
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"unicode"
@@ -11,7 +11,7 @@ import (
 
 // UnmarshalJSON unmarshals JSON data from the HTTP request body.
 func UnmarshalJSON(r *http.Request, v interface{}) error {
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read request body: %w", err)
 	}

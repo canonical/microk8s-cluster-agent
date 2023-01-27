@@ -267,7 +267,6 @@ func (s *Snap) GetOrCreateKubeletToken(hostname string) (string, error) {
 		s.KubeletTokens = make(map[string]string, 1)
 	}
 	if t, ok := s.KubeletTokens[hostname]; ok {
-		fmt.Println("AA")
 		return t, nil
 	}
 	s.KubeletTokens[hostname] = util.NewRandomString(util.Alpha, 32)
@@ -305,7 +304,7 @@ func (s *Snap) ImportImage(ctx context.Context, reader io.Reader) error {
 	if s.ImportImageCalledWith == nil {
 		s.ImportImageCalledWith = make([]string, 0, 1)
 	}
-	b, _ := ioutil.ReadAll(reader)
+	b, _ := io.ReadAll(reader)
 	s.ImportImageCalledWith = append(s.ImportImageCalledWith, string(b))
 	return nil
 }
