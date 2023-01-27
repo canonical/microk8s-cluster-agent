@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"strings"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
@@ -70,14 +70,14 @@ func (s *Snap) GetGroupName() string {
 }
 
 // EnableAddon is a mock implementation for the snap.Snap interface.
-func (s *Snap) EnableAddon(_ context.Context, addon string) error {
-	s.EnableAddonCalledWith = append(s.EnableAddonCalledWith, addon)
+func (s *Snap) EnableAddon(_ context.Context, addon string, args ...string) error {
+	s.EnableAddonCalledWith = append(s.EnableAddonCalledWith, strings.TrimSpace(fmt.Sprintf("%s %s", addon, strings.Join(args, " "))))
 	return nil
 }
 
 // DisableAddon is a mock implementation for the snap.Snap interface.
-func (s *Snap) DisableAddon(_ context.Context, addon string) error {
-	s.DisableAddonCalledWith = append(s.DisableAddonCalledWith, addon)
+func (s *Snap) DisableAddon(_ context.Context, addon string, args ...string) error {
+	s.DisableAddonCalledWith = append(s.DisableAddonCalledWith, strings.TrimSpace(fmt.Sprintf("%s %s", addon, strings.Join(args, " "))))
 	return nil
 }
 
