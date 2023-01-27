@@ -1,0 +1,2 @@
+version: 1
+addons: [addon1, addon2]
