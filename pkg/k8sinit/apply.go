@@ -7,13 +7,8 @@ import (
 
 // Apply applies a MicroK8s launch configuration to the local MicroK8s node.
 func (l *Launcher) Apply(ctx context.Context, c *Configuration) error {
-	switch {
-	case c == nil:
+	if c == nil {
 		return nil
-	case c.Version > maximumConfigFileVersionSupported:
-		return fmt.Errorf("config file version is %v but the maximum version supported is %v", c.Version, maximumConfigFileVersionSupported)
-	case c.Version < minimumConfigFileVersionRequired:
-		return fmt.Errorf("config file version is %v but the minimum version required is %v", c.Version, minimumConfigFileVersionRequired)
 	}
 
 	for _, addon := range c.Addons {

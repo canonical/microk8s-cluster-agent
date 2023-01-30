@@ -21,7 +21,7 @@ func TestParse(t *testing.T) {
 		{
 			name: "full.yaml",
 			expectConfiguration: &k8sinit.Configuration{
-				Version: 1,
+				Version: "0.1.0",
 				Addons: []k8sinit.AddonConfiguration{
 					{Name: "dns", Enable: true},
 					{Name: "mayastor", Enable: true, Arguments: []string{"--default-pool-size", "20GB"}},
@@ -29,20 +29,12 @@ func TestParse(t *testing.T) {
 				},
 			},
 		},
-		{
-			name:      "invalid-yaml.yaml",
-			expectErr: true,
-		},
-		{
-			name:      "invalid-schema.yaml",
-			expectErr: true,
-		},
-		{
-			name: "unknown-fields.yaml",
-			expectConfiguration: &k8sinit.Configuration{
-				Version: 1,
-			},
-		},
+		{name: "unknown-fields.yaml", expectConfiguration: &k8sinit.Configuration{Version: "0.1.0"}},
+		{name: "invalid-yaml.yaml", expectErr: true},
+		{name: "invalid-schema.yaml", expectErr: true},
+		{name: "version/newer.yaml", expectErr: true},
+		{name: "version/non-semantic.yaml", expectErr: true},
+		{name: "version/unsupported.yaml", expectErr: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			b, err := testdata.ReadFile(filepath.Join("testdata", "schema", filepath.Join(tc.name)))
