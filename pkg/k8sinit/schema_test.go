@@ -23,9 +23,9 @@ func TestParse(t *testing.T) {
 			expectConfiguration: &k8sinit.Configuration{
 				Version: "0.1.0",
 				Addons: []k8sinit.AddonConfiguration{
-					{Name: "dns", Enable: true},
-					{Name: "mayastor", Enable: true, Arguments: []string{"--default-pool-size", "20GB"}},
-					{Name: "registry", Enable: false},
+					{Name: "dns", Disable: false},
+					{Name: "mayastor", Disable: false, Arguments: []string{"--default-pool-size", "20GB"}},
+					{Name: "registry", Disable: true},
 				},
 			},
 		},

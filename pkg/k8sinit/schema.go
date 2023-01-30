@@ -18,8 +18,8 @@ type AddonConfiguration struct {
 	// Name of the addon to configure.
 	Name string `yaml:"name"`
 
-	// Enable controls whether we will enable the addon.
-	Enable bool `yaml:"enable"`
+	// Disable the addon.
+	Disable bool `yaml:"disable"`
 
 	// Arguments is optional arguments passed to the addon enable or disable operation.
 	Arguments []string `yaml:"args"`

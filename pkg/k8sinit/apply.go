@@ -22,7 +22,7 @@ func (l *Launcher) Apply(ctx context.Context, c *Configuration) error {
 
 func (l *Launcher) applyAddon(ctx context.Context, c AddonConfiguration) error {
 	f := l.snap.EnableAddon
-	if !c.Enable {
+	if c.Disable {
 		f = l.snap.DisableAddon
 	}
 

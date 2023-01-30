@@ -18,9 +18,9 @@ func TestAddons(t *testing.T) {
 		{
 			name: "simple",
 			addons: []AddonConfiguration{
-				{Name: "dns", Enable: true},
-				{Name: "mayastor", Enable: true, Arguments: []string{"--default-pool-size", "20GB"}},
-				{Name: "registry", Enable: false},
+				{Name: "dns", Disable: false},
+				{Name: "mayastor", Disable: false, Arguments: []string{"--default-pool-size", "20GB"}},
+				{Name: "registry", Disable: true},
 			},
 			expectEnableAddons: []string{
 				"dns",
