@@ -64,11 +64,11 @@ func (s *snap) GetGroupName() string {
 }
 
 func (s *snap) EnableAddon(ctx context.Context, addon string, args ...string) error {
-	return s.runCommand(ctx, append([]string{s.snapPath("microk8s-enable.wrapper", addon)}, args...)...)
+	return s.runCommand(ctx, append([]string{s.snapPath("microk8s-enable.wrapper"), addon}, args...)...)
 }
 
 func (s *snap) DisableAddon(ctx context.Context, addon string, args ...string) error {
-	return s.runCommand(ctx, append([]string{s.snapPath("microk8s-disable.wrapper", addon)}, args...)...)
+	return s.runCommand(ctx, append([]string{s.snapPath("microk8s-disable.wrapper"), addon}, args...)...)
 }
 
 type snapcraftYml struct {
