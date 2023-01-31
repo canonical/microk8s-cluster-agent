@@ -1,0 +1,8 @@
+---
+version: 0.1.0
+addons:
+  - name: dns
+  - name: mayastor
+    args: [--default-pool-size, 20GB]
+  - name: registry
+    disable: true

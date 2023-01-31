@@ -12,9 +12,9 @@ type Snap interface {
 	GetGroupName() string
 
 	// EnableAddon enables a MicroK8s addon.
-	EnableAddon(ctx context.Context, addon string) error
+	EnableAddon(ctx context.Context, addon string, args ...string) error
 	// DisableAddon disables a MicroK8s addon.
-	DisableAddon(ctx context.Context, addon string) error
+	DisableAddon(ctx context.Context, addon string, args ...string) error
 	// RestartService restarts a MicroK8s service.
 	RestartService(ctx context.Context, serviceName string) error
 	// RunUpgrade runs a single phase for an upgrade script. See the upgrade-scripts folder.

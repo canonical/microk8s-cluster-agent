@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"strings"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
@@ -70,14 +70,14 @@ func (s *Snap) GetGroupName() string {
 }
 
 // EnableAddon is a mock implementation for the snap.Snap interface.
-func (s *Snap) EnableAddon(_ context.Context, addon string) error {
-	s.EnableAddonCalledWith = append(s.EnableAddonCalledWith, addon)
+func (s *Snap) EnableAddon(_ context.Context, addon string, args ...string) error {
+	s.EnableAddonCalledWith = append(s.EnableAddonCalledWith, strings.TrimSpace(fmt.Sprintf("%s %s", addon, strings.Join(args, " "))))
 	return nil
 }
 
 // DisableAddon is a mock implementation for the snap.Snap interface.
-func (s *Snap) DisableAddon(_ context.Context, addon string) error {
-	s.DisableAddonCalledWith = append(s.DisableAddonCalledWith, addon)
+func (s *Snap) DisableAddon(_ context.Context, addon string, args ...string) error {
+	s.DisableAddonCalledWith = append(s.DisableAddonCalledWith, strings.TrimSpace(fmt.Sprintf("%s %s", addon, strings.Join(args, " "))))
 	return nil
 }
 
@@ -267,7 +267,6 @@ func (s *Snap) GetOrCreateKubeletToken(hostname string) (string, error) {
 		s.KubeletTokens = make(map[string]string, 1)
 	}
 	if t, ok := s.KubeletTokens[hostname]; ok {
-		fmt.Println("AA")
 		return t, nil
 	}
 	s.KubeletTokens[hostname] = util.NewRandomString(util.Alpha, 32)
@@ -305,7 +304,7 @@ func (s *Snap) ImportImage(ctx context.Context, reader io.Reader) error {
 	if s.ImportImageCalledWith == nil {
 		s.ImportImageCalledWith = make([]string, 0, 1)
 	}
-	b, _ := ioutil.ReadAll(reader)
+	b, _ := io.ReadAll(reader)
 	s.ImportImageCalledWith = append(s.ImportImageCalledWith, string(b))
 	return nil
 }
