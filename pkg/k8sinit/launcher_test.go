@@ -34,7 +34,7 @@ func TestAddons(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s := &mock.Snap{}
 
-			l := NewLauncher(s)
+			l := NewLauncher(s, false)
 			c := MultiPartConfiguration{[]*Configuration{
 				{Version: minimumConfigFileVersionRequired.String(), Addons: tc.addons},
 			}}

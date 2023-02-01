@@ -11,7 +11,8 @@ import (
 )
 
 var (
-	initInputFile = ""
+	initInputFile string
+	initPreInit   bool
 
 	initCmd = &cobra.Command{
 		Use:    "init",
@@ -22,7 +23,7 @@ var (
 				os.Getenv("SNAP"),
 				os.Getenv("SNAP_DATA"),
 			)
-			l := k8sinit.NewLauncher(s)
+			l := k8sinit.NewLauncher(s, initPreInit)
 
 			var (
 				b   []byte
@@ -58,6 +59,7 @@ var (
 
 func init() {
 	initCmd.Flags().StringVarP(&initInputFile, "config-file", "c", initInputFile, "configuration file to read, or '-' to read from stdin")
+	initCmd.Flags().BoolVarP(&initPreInit, "pre-init", "p", initPreInit, "apply pre-init configuration, do not restart services or manage addons")
 
 	rootCmd.AddCommand(initCmd)
 }
