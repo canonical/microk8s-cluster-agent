@@ -43,7 +43,7 @@ var (
 				}
 			}
 
-			c, err := k8sinit.ParseConfiguration(b)
+			c, err := k8sinit.ParseMultiPartConfiguration(b)
 			if err != nil {
 				return fmt.Errorf("failed to parse config file: %w", err)
 			}
