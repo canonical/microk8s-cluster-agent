@@ -30,6 +30,9 @@ func (l *Launcher) applyPart(ctx context.Context, c *Configuration) error {
 	if err := l.reconcileKubeletArgs(ctx, c.ExtraKubeletArgs); err != nil {
 		return fmt.Errorf("failed to configure extra kubelet args: %w", err)
 	}
+	if err := l.reconcileKubeAPIServerArgs(ctx, c.ExtraKubeAPIServerArgs); err != nil {
+		return fmt.Errorf("failed to configure extra kube-apiserver args: %w", err)
+	}
 
 	return nil
 }
@@ -48,6 +51,14 @@ func (l *Launcher) reconcileAddons(ctx context.Context, addons []AddonConfigurat
 }
 
 func (l *Launcher) reconcileKubeletArgs(ctx context.Context, args map[string]*string) error {
+	return l.reconcileServiceArgs(ctx, "kubelet", args)
+}
+
+func (l *Launcher) reconcileKubeAPIServerArgs(ctx context.Context, args map[string]*string) error {
+	return l.reconcileServiceArgs(ctx, "kube-apiserver", args)
+}
+
+func (l *Launcher) reconcileServiceArgs(ctx context.Context, service string, args map[string]*string) error {
 	if len(args) == 0 {
 		return nil
 	}
@@ -62,14 +73,14 @@ func (l *Launcher) reconcileKubeletArgs(ctx context.Context, args map[string]*st
 		}
 	}
 
-	changed, err := snaputil.UpdateServiceArguments(l.snap, "kubelet", []map[string]string{updateArgs}, deleteArgs)
+	changed, err := snaputil.UpdateServiceArguments(l.snap, service, []map[string]string{updateArgs}, deleteArgs)
 	if err != nil {
 		return fmt.Errorf("failed to update service arguments: %w", err)
 	}
 
 	// TODO(neoaggelos): restart services should be deferred until the very end of the function
 	if changed && !l.preInit {
-		if err := l.snap.RestartService(ctx, "kubelet"); err != nil {
+		if err := l.snap.RestartService(ctx, service); err != nil {
 			return fmt.Errorf("failed to restart kubelet service after updating arguments: %w", err)
 		}
 	}

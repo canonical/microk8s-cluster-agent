@@ -46,6 +46,10 @@ type Configuration struct {
 	// ExtraKubeletArgs is a list of extra arguments to add to the local node kubelet.
 	// Set a value to null to remove it from the arguments.
 	ExtraKubeletArgs map[string]*string `yaml:"extraKubeletArgs"`
+
+	// ExtraKubeAPIServerArgs is a list of extra arguments to add to the local node kube-apiserver.
+	// Set a value to null to remove it from the arguments.
+	ExtraKubeAPIServerArgs map[string]*string `yaml:"extraKubeAPIServerArgs"`
 }
 
 // ParseConfiguration tries to parse a Configuration object from YAML data.
