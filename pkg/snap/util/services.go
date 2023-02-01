@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
+	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 )
 
 // GetServiceArgument retrieves the value of a specific argument from the $SNAP_DATA/args/$service file.
@@ -18,13 +19,13 @@ func GetServiceArgument(s snap.Snap, serviceName string, argument string) string
 
 	for _, line := range strings.Split(arguments, "\n") {
 		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, argument) {
+		// ignore empty lines
+		if line == "" {
 			continue
 		}
-		// parse "--argument value" and "--argument=value" variants
-		line = line[strings.LastIndex(line, " ")+1:]
-		line = line[strings.LastIndex(line, "=")+1:]
-		return line
+		if key, value := util.ParseArgumentLine(line); key == argument {
+			return value
+		}
 	}
 	return ""
 }
@@ -71,9 +72,7 @@ func UpdateServiceArguments(s snap.Snap, serviceName string, updateList []map[st
 		if line == "" {
 			continue
 		}
-		// handle "--argument value" and "--argument=value" variants
-		key := strings.SplitN(line, " ", 2)[0]
-		key = strings.SplitN(key, "=", 2)[0]
+		key, _ := util.ParseArgumentLine(line)
 		existingArguments[key] = struct{}{}
 		if newValue, ok := updateMap[key]; ok {
 			// update argument with new value
