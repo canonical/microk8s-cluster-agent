@@ -1,11 +1,15 @@
 package k8sinit
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"io"
 	"log"
 
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/util/version"
+	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 )
 
 var (
@@ -23,6 +27,12 @@ type AddonConfiguration struct {
 
 	// Arguments is optional arguments passed to the addon enable or disable operation.
 	Arguments []string `yaml:"args"`
+}
+
+// MultiPartConfiguration is a configuration split into multiple parts.
+type MultiPartConfiguration struct {
+	// Parts are configuration objects that are meant to be applied in order.
+	Parts []*Configuration
 }
 
 // Configuration is the top-level definition for MicroK8s configuration files.
@@ -59,4 +69,29 @@ func ParseConfiguration(input []byte) (*Configuration, error) {
 	}
 
 	return c, nil
+}
+
+// ParseMultiPartConfiguration parses a multiple YAML configuration objects into a MultiPartConfiguration.
+func ParseMultiPartConfiguration(b []byte) (MultiPartConfiguration, error) {
+	reader := k8syaml.NewYAMLReader(bufio.NewReader(bytes.NewBuffer(b)))
+
+	cfg := MultiPartConfiguration{}
+	for {
+		doc, err := reader.Read()
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return MultiPartConfiguration{}, err
+			}
+		}
+
+		part, err := ParseConfiguration(doc)
+		if err != nil {
+			return MultiPartConfiguration{}, err
+		}
+		cfg.Parts = append(cfg.Parts, part)
+	}
+
+	return cfg, nil
 }

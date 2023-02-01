@@ -5,8 +5,18 @@ import (
 	"fmt"
 )
 
-// Apply applies a MicroK8s launch configuration to the local MicroK8s node.
-func (l *Launcher) Apply(ctx context.Context, c *Configuration) error {
+// Apply applies a multi-part configuration to the local MicroK8s node.
+func (l *Launcher) Apply(ctx context.Context, c MultiPartConfiguration) error {
+	for idx, part := range c.Parts {
+		if err := l.applyPart(ctx, part); err != nil {
+			return fmt.Errorf("failed to apply config part %d: %w", idx, err)
+		}
+	}
+	return nil
+}
+
+// applyPart applies a MicroK8s launch configuration to the local MicroK8s node.
+func (l *Launcher) applyPart(ctx context.Context, c *Configuration) error {
 	if c == nil {
 		return nil
 	}

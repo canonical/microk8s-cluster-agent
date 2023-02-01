@@ -35,7 +35,10 @@ func TestAddons(t *testing.T) {
 			s := &mock.Snap{}
 
 			l := NewLauncher(s)
-			if err := l.Apply(context.Background(), &Configuration{Version: minimumConfigFileVersionRequired.String(), Addons: tc.addons}); err != nil {
+			c := MultiPartConfiguration{[]*Configuration{
+				{Version: minimumConfigFileVersionRequired.String(), Addons: tc.addons},
+			}}
+			if err := l.Apply(context.Background(), c); err != nil {
 				t.Fatalf("expected no error when applying configuration but got %q instead", err)
 			}
 
