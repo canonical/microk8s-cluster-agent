@@ -42,6 +42,10 @@ type Configuration struct {
 
 	// Addons is a list of addons to enable and/or disable.
 	Addons []AddonConfiguration `yaml:"addons"`
+
+	// ExtraKubeletArgs is a list of extra arguments to add to the local node kubelet.
+	// Set a value to null to remove it from the arguments.
+	ExtraKubeletArgs map[string]*string `yaml:"extraKubeletArgs"`
 }
 
 // ParseConfiguration tries to parse a Configuration object from YAML data.
