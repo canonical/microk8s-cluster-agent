@@ -62,7 +62,27 @@ func TestUpdateServiceArguments(t *testing.T) {
 		update         []map[string]string
 		delete         []string
 		expectedValues map[string]string
+		expectedChange bool
 	}{
+		{
+			name:   "no-change",
+			update: []map[string]string{{"--key": "value"}},
+			delete: []string{"--non-existent"},
+			expectedValues: map[string]string{
+				"--key":   "value",
+				"--other": "other-value",
+			},
+			expectedChange: false,
+		},
+		{
+			name:   "no-change-space",
+			update: []map[string]string{{"--with-space": "value2"}},
+			delete: []string{},
+			expectedValues: map[string]string{
+				"--with-space": "value2",
+			},
+			expectedChange: false,
+		},
 		{
 			name:   "simple-update",
 			update: []map[string]string{{"--key": "new-value"}},
@@ -71,6 +91,17 @@ func TestUpdateServiceArguments(t *testing.T) {
 				"--key":   "new-value",
 				"--other": "other-value",
 			},
+			expectedChange: true,
+		},
+		{
+			name:   "delete-one",
+			delete: []string{"--with-space"},
+			expectedValues: map[string]string{
+				"--key":        "value",
+				"--other":      "other-value",
+				"--with-space": "",
+			},
+			expectedChange: true,
 		},
 		{
 			name:   "update-many-delete-one",
@@ -81,6 +112,7 @@ func TestUpdateServiceArguments(t *testing.T) {
 				"--other":      "other-new-value",
 				"--with-space": "",
 			},
+			expectedChange: true,
 		},
 		{
 			name:   "update-many-single-list",
@@ -89,12 +121,14 @@ func TestUpdateServiceArguments(t *testing.T) {
 				"--key":   "new-value",
 				"--other": "other-new-value",
 			},
+			expectedChange: true,
 		},
 		{
 			name: "no-updates",
 			expectedValues: map[string]string{
 				"--key": "value",
 			},
+			expectedChange: false,
 		},
 		{
 			name:   "new-opt",
@@ -102,6 +136,7 @@ func TestUpdateServiceArguments(t *testing.T) {
 			expectedValues: map[string]string{
 				"--new-opt": "opt-value",
 			},
+			expectedChange: true,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -111,14 +146,34 @@ func TestUpdateServiceArguments(t *testing.T) {
 				},
 			}
 
-			if err := snaputil.UpdateServiceArguments(s, "service", tc.update, tc.delete); err != nil {
+			changed, err := snaputil.UpdateServiceArguments(s, "service", tc.update, tc.delete)
+			if err != nil {
 				t.Fatalf("Expected no error updating arguments file but received %q", err)
+			}
+			if changed && !tc.expectedChange {
+				t.Fatalf("Expected no change in arguments but there was one")
+			} else if !changed && tc.expectedChange {
+				t.Fatalf("Expected a change in arguments but there was none")
 			}
 			for key, expectedValue := range tc.expectedValues {
 				if value := snaputil.GetServiceArgument(s, "service", key); value != expectedValue {
 					t.Fatalf("Expected value for argument %q does not match (%q and %q)", key, value, expectedValue)
 				}
 			}
+
+			if err != nil {
+				return
+			}
+
+			t.Run("Reapply", func(t *testing.T) {
+				changed, err := snaputil.UpdateServiceArguments(s, "service", tc.update, tc.delete)
+				if err != nil {
+					t.Fatalf("expected no error when updating arguments again but received %q", err)
+				}
+				if changed {
+					t.Fatal("expected no change after updating arguments again but there was one")
+				}
+			})
 		})
 	}
 }
