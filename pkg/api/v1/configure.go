@@ -47,7 +47,7 @@ func (a *API) Configure(ctx context.Context, req ConfigureRequest) error {
 		return fmt.Errorf("invalid token")
 	}
 	for _, service := range req.ConfigureServices {
-		if err := snaputil.UpdateServiceArguments(a.Snap, service.Name, service.UpdateArguments, service.RemoveArguments); err != nil {
+		if _, err := snaputil.UpdateServiceArguments(a.Snap, service.Name, service.UpdateArguments, service.RemoveArguments); err != nil {
 			return fmt.Errorf("failed to update arguments of service %q: %w", service.Name, err)
 		}
 		if service.Restart {
