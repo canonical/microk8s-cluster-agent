@@ -24,7 +24,9 @@ func (l *Launcher) applyPart(ctx context.Context, c *Configuration) error {
 	}
 
 	if !l.preInit {
-		l.reconcileAddons(ctx, c.Addons)
+		if err := l.reconcileAddons(ctx, c.Addons); err != nil {
+			return fmt.Errorf("failed to reconcile addons: %w", err)
+		}
 	}
 
 	if err := l.reconcileKubeletArgs(ctx, c.ExtraKubeletArgs); err != nil {
