@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 )
 
@@ -14,6 +15,8 @@ func RunCommand(ctx context.Context, command ...string) error {
 		args = command[1:]
 	}
 	cmd := exec.CommandContext(ctx, command[0], args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("command %v failed with exit code %d: %w", command, cmd.ProcessState.ExitCode(), err)
 	}
