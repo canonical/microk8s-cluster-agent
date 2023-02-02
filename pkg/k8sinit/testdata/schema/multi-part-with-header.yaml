@@ -1,0 +1,9 @@
+# example doc with header comment
+---
+version: 0.1.0
+addons:
+  - name: dns
+---
+version: 0.1.0
+addons:
+  - name: rbac
