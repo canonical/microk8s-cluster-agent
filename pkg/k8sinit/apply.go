@@ -3,6 +3,8 @@ package k8sinit
 import (
 	"context"
 	"fmt"
+
+	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
 )
 
 // Apply applies a multi-part configuration to the local MicroK8s node.
@@ -21,23 +23,68 @@ func (l *Launcher) applyPart(ctx context.Context, c *Configuration) error {
 		return nil
 	}
 
-	for _, addon := range c.Addons {
-		if err := l.applyAddon(ctx, addon); err != nil {
-			return fmt.Errorf("failed to apply addon %q: %w", addon.Name, err)
+	if !l.preInit {
+		if err := l.reconcileAddons(ctx, c.Addons); err != nil {
+			return fmt.Errorf("failed to reconcile addons: %w", err)
 		}
+	}
+
+	if err := l.reconcileKubeletArgs(ctx, c.ExtraKubeletArgs); err != nil {
+		return fmt.Errorf("failed to configure extra kubelet args: %w", err)
+	}
+	if err := l.reconcileKubeAPIServerArgs(ctx, c.ExtraKubeAPIServerArgs); err != nil {
+		return fmt.Errorf("failed to configure extra kube-apiserver args: %w", err)
 	}
 
 	return nil
 }
 
-func (l *Launcher) applyAddon(ctx context.Context, c AddonConfiguration) error {
-	f := l.snap.EnableAddon
-	if c.Disable {
-		f = l.snap.DisableAddon
+func (l *Launcher) reconcileAddons(ctx context.Context, addons []AddonConfiguration) error {
+	for _, addon := range addons {
+		if addon.Disable {
+			if err := l.snap.DisableAddon(ctx, addon.Name, addon.Arguments...); err != nil {
+				return fmt.Errorf("failed to disable addon %q: %w", addon.Name, err)
+			}
+		} else if err := l.snap.EnableAddon(ctx, addon.Name, addon.Arguments...); err != nil {
+			return fmt.Errorf("failed to enable addon %q: %w", addon.Name, err)
+		}
+	}
+	return nil
+}
+
+func (l *Launcher) reconcileKubeletArgs(ctx context.Context, args map[string]*string) error {
+	return l.reconcileServiceArgs(ctx, "kubelet", args)
+}
+
+func (l *Launcher) reconcileKubeAPIServerArgs(ctx context.Context, args map[string]*string) error {
+	return l.reconcileServiceArgs(ctx, "kube-apiserver", args)
+}
+
+func (l *Launcher) reconcileServiceArgs(ctx context.Context, service string, args map[string]*string) error {
+	if len(args) == 0 {
+		return nil
+	}
+	updateArgs := map[string]string{}
+	deleteArgs := []string{}
+
+	for key, valptr := range args {
+		if valptr == nil {
+			deleteArgs = append(deleteArgs, key)
+		} else {
+			updateArgs[key] = *valptr
+		}
 	}
 
-	if err := f(ctx, c.Name, c.Arguments...); err != nil {
-		return fmt.Errorf("addon operation failed: %w", err)
+	changed, err := snaputil.UpdateServiceArguments(l.snap, service, []map[string]string{updateArgs}, deleteArgs)
+	if err != nil {
+		return fmt.Errorf("failed to update service arguments: %w", err)
+	}
+
+	// TODO(neoaggelos): restart services should be deferred until the very end of the function
+	if changed && !l.preInit {
+		if err := l.snap.RestartService(ctx, service); err != nil {
+			return fmt.Errorf("failed to restart kubelet service after updating arguments: %w", err)
+		}
 	}
 
 	return nil
