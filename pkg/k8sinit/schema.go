@@ -3,6 +3,7 @@ package k8sinit
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -15,6 +16,9 @@ import (
 var (
 	minimumConfigFileVersionRequired  = version.MustParseSemantic("0.1.0")
 	maximumConfigFileVersionSupported = version.MustParseSemantic("0.1.0")
+
+	// errEmptyConfig is an ignorable error when parsing empty YAML documents
+	errEmptyConfig = fmt.Errorf("empty configuration object")
 )
 
 // AddonConfiguration specifies an addon to be enabled or disabled.
@@ -66,6 +70,10 @@ func ParseConfiguration(input []byte) (*Configuration, error) {
 		log.Printf("Any unknown fields will be ignored")
 	}
 
+	if c.isZero() {
+		return nil, errEmptyConfig
+	}
+
 	v, err := version.ParseSemantic(c.Version)
 	switch {
 	case err != nil:
@@ -96,10 +104,22 @@ func ParseMultiPartConfiguration(b []byte) (MultiPartConfiguration, error) {
 
 		part, err := ParseConfiguration(doc)
 		if err != nil {
+			if errors.Is(err, errEmptyConfig) {
+				continue
+			}
 			return MultiPartConfiguration{}, err
 		}
 		cfg.Parts = append(cfg.Parts, part)
 	}
 
 	return cfg, nil
+}
+
+// isZero returns true if all configuration values are zero/empty.
+// NOTE(neoaggelos): this needs to be updated when new fields are added to the Configuration struct.
+func (c *Configuration) isZero() bool {
+	return c.Version == "" &&
+		len(c.Addons) == 0 &&
+		len(c.ExtraKubeAPIServerArgs) == 0 &&
+		len(c.ExtraKubeletArgs) == 0
 }

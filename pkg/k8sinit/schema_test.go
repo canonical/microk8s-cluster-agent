@@ -41,6 +41,15 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name: "multi-part-with-header.yaml",
+			expectConfiguration: k8sinit.MultiPartConfiguration{
+				Parts: []*k8sinit.Configuration{
+					{Version: "0.1.0", Addons: []k8sinit.AddonConfiguration{{Name: "dns"}}},
+					{Version: "0.1.0", Addons: []k8sinit.AddonConfiguration{{Name: "rbac"}}},
+				},
+			},
+		},
+		{
 			name: "unknown-fields.yaml",
 			expectConfiguration: k8sinit.MultiPartConfiguration{
 				Parts: []*k8sinit.Configuration{{
