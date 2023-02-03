@@ -75,6 +75,7 @@ func TestFiles(t *testing.T) {
 	}{
 		{name: "CNI", write: s.WriteCNIYaml, file: "testdata/args/cni-network/cni.yaml"},
 		{name: "DqliteUpdateYaml", write: s.WriteDqliteUpdateYaml, file: "testdata/var/kubernetes/backend/update.yaml"},
+		{name: "WriteCSRConfig", write: s.WriteCSRConfig, file: "testdata/certs/csr.conf.template"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			magicVal := util.NewRandomString(util.Alpha, 10)

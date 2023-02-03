@@ -62,6 +62,8 @@ type Snap struct {
 	SignedCertificate         string
 
 	ImportImageCalledWith []string // string(io.ReadAll(reader))
+
+	CSRConfig string
 }
 
 // GetGroupName is a mock implementation for the snap.Snap interface.
@@ -306,6 +308,12 @@ func (s *Snap) ImportImage(ctx context.Context, reader io.Reader) error {
 	}
 	b, _ := io.ReadAll(reader)
 	s.ImportImageCalledWith = append(s.ImportImageCalledWith, string(b))
+	return nil
+}
+
+// WriteCSRConfig is a mock implementation for the snap.Snap interface.
+func (s *Snap) WriteCSRConfig(b []byte) error {
+	s.CSRConfig = string(b)
 	return nil
 }
 

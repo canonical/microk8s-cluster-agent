@@ -91,4 +91,7 @@ type Snap interface {
 
 	// ImportImage imports an OCI image from raw bytes.
 	ImportImage(ctx context.Context, reader io.Reader) error
+
+	// WriteCSRConfig updates the csr.conf.template file on the local node.
+	WriteCSRConfig(csrConf []byte) error
 }
