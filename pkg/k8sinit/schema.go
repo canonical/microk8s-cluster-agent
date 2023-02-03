@@ -54,6 +54,9 @@ type Configuration struct {
 	// ExtraKubeAPIServerArgs is a list of extra arguments to add to the local node kube-apiserver.
 	// Set a value to null to remove it from the arguments.
 	ExtraKubeAPIServerArgs map[string]*string `yaml:"extraKubeAPIServerArgs"`
+
+	// ExtraSANs are a list of extra Subject Alternate Names to add to the local API server.
+	ExtraSANs []string `yaml:"extraSANs"`
 }
 
 // ParseConfiguration tries to parse a Configuration object from YAML data.
@@ -121,5 +124,6 @@ func (c *Configuration) isZero() bool {
 	return c.Version == "" &&
 		len(c.Addons) == 0 &&
 		len(c.ExtraKubeAPIServerArgs) == 0 &&
-		len(c.ExtraKubeletArgs) == 0
+		len(c.ExtraKubeletArgs) == 0 &&
+		len(c.ExtraSANs) == 0
 }

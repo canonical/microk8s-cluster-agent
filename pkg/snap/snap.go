@@ -341,4 +341,8 @@ func (s *snap) ImportImage(ctx context.Context, reader io.Reader) error {
 	return nil
 }
 
+func (s *snap) WriteCSRConfig(csrConf []byte) error {
+	return os.WriteFile(s.snapDataPath("certs", "csr.conf.template"), csrConf, 0660)
+}
+
 var _ Snap = &snap{}
