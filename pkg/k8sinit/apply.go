@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
+	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 )
 
 // Apply applies a multi-part configuration to the local MicroK8s node.
@@ -34,6 +35,9 @@ func (l *Launcher) applyPart(ctx context.Context, c *Configuration) error {
 	}
 	if err := l.reconcileKubeAPIServerArgs(ctx, c.ExtraKubeAPIServerArgs); err != nil {
 		return fmt.Errorf("failed to configure extra kube-apiserver args: %w", err)
+	}
+	if err := l.reconcileExtraSANs(c.ExtraSANs); err != nil {
+		return fmt.Errorf("failed to configure SANs for apiserver: %w", err)
 	}
 
 	return nil
@@ -87,5 +91,16 @@ func (l *Launcher) reconcileServiceArgs(ctx context.Context, service string, arg
 		}
 	}
 
+	return nil
+}
+
+func (l *Launcher) reconcileExtraSANs(extraSANs []string) error {
+	csr, err := util.GenerateCSRConf(extraSANs)
+	if err != nil {
+		return fmt.Errorf("failed to generate csr configuration: %w", err)
+	}
+	if err := l.snap.WriteCSRConfig(csr); err != nil {
+		return fmt.Errorf("failed to write csr configuration: %w", err)
+	}
 	return nil
 }
