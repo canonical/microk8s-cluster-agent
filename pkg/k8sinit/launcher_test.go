@@ -49,5 +49,43 @@ func TestAddons(t *testing.T) {
 		})
 	}
 }
+
+func TestExtraServiceArguments(t *testing.T) {
+	s := &mock.Snap{}
+
+	l := NewLauncher(s, false)
+	c := MultiPartConfiguration{[]*Configuration{
+		{
+			Version: minimumConfigFileVersionRequired.String(),
+			ExtraKubeletArgs: map[string]*string{
+				"--Kubelet-arg": &[]string{"value"}[0],
+			},
+			ExtraKubeAPIServerArgs: map[string]*string{
+				"--KubeAPIServer-arg": &[]string{"value"}[0],
+			},
+			ExtraKubeProxyArgs: map[string]*string{
+				"--KubeProxy-arg": &[]string{"value"}[0],
+			},
+			ExtraKubeControllerManagerArgs: map[string]*string{
+				"--KubeControllerManager-arg": &[]string{"value"}[0],
+			},
+			ExtraKubeSchedulerArgs: map[string]*string{
+				"--KubeScheduler-arg": &[]string{"value"}[0],
+			},
+		},
+	}}
+	if err := l.Apply(context.Background(), c); err != nil {
+		t.Fatalf("expected no error when applying configuration but got %q instead", err)
 	}
+
+	g := NewWithT(t)
+	g.Expect(s.WriteServiceArgumentsCalled).To(BeTrue())
+
+	g.Expect(s.ServiceArguments["kubelet"]).To(ContainSubstring("--Kubelet-arg=value"))
+	g.Expect(s.ServiceArguments["kube-apiserver"]).To(ContainSubstring("--KubeAPIServer-arg=value"))
+	g.Expect(s.ServiceArguments["kube-proxy"]).To(ContainSubstring("--KubeProxy-arg=value"))
+	g.Expect(s.ServiceArguments["kube-controller-manager"]).To(ContainSubstring("--KubeControllerManager-arg=value"))
+	g.Expect(s.ServiceArguments["kube-scheduler"]).To(ContainSubstring("--KubeScheduler-arg=value"))
+
+	g.Expect(s.RestartServiceCalledWith).To(ContainElement("kubelite"))
 }
