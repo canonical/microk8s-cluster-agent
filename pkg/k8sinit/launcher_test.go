@@ -2,10 +2,10 @@ package k8sinit
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap/mock"
+	. "github.com/onsi/gomega"
 )
 
 func TestAddons(t *testing.T) {
@@ -42,12 +42,12 @@ func TestAddons(t *testing.T) {
 				t.Fatalf("expected no error when applying configuration but got %q instead", err)
 			}
 
-			if !reflect.DeepEqual(s.EnableAddonCalledWith, tc.expectEnableAddons) {
-				t.Fatalf("expected enabled addons %v but got %v instead", tc.expectEnableAddons, s.EnableAddonCalledWith)
-			}
-			if !reflect.DeepEqual(s.DisableAddonCalledWith, tc.expectDisableAddons) {
-				t.Fatalf("expected disabled addons %v but got %v instead", tc.expectDisableAddons, s.DisableAddonCalledWith)
-			}
+			g := NewWithT(t)
+
+			g.Expect(s.EnableAddonCalledWith).To(Equal(tc.expectEnableAddons))
+			g.Expect(s.DisableAddonCalledWith).To(Equal(tc.expectDisableAddons))
 		})
+	}
+}
 	}
 }
