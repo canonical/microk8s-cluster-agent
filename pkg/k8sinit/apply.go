@@ -8,63 +8,75 @@ import (
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 )
 
+type launcherScope struct {
+	launcher *Launcher
+
+	needsKubeliteRestart bool
+}
+
 // Apply applies a multi-part configuration to the local MicroK8s node.
 func (l *Launcher) Apply(ctx context.Context, c MultiPartConfiguration) error {
+	s := &launcherScope{
+		launcher: l,
+	}
 	for idx, part := range c.Parts {
-		if err := l.applyPart(ctx, part); err != nil {
+		if err := s.applyPart(ctx, part); err != nil {
 			return fmt.Errorf("failed to apply config part %d: %w", idx, err)
+		}
+	}
+	if !s.launcher.preInit && s.needsKubeliteRestart {
+		if err := s.launcher.snap.RestartService(ctx, "kubelite"); err != nil {
+			return fmt.Errorf("failed to restart kubelite to apply configuration: %w", err)
 		}
 	}
 	return nil
 }
 
 // applyPart applies a MicroK8s launch configuration to the local MicroK8s node.
-func (l *Launcher) applyPart(ctx context.Context, c *Configuration) error {
+func (s *launcherScope) applyPart(ctx context.Context, c *Configuration) error {
 	if c == nil {
 		return nil
 	}
 
-	if !l.preInit {
-		if err := l.reconcileAddons(ctx, c.Addons); err != nil {
+	if !s.launcher.preInit {
+		if err := s.reconcileAddons(ctx, c.Addons); err != nil {
 			return fmt.Errorf("failed to reconcile addons: %w", err)
 		}
 	}
 
-	if err := l.reconcileKubeletArgs(ctx, c.ExtraKubeletArgs); err != nil {
-		return fmt.Errorf("failed to configure extra kubelet args: %w", err)
+	for svc, args := range map[string]map[string]*string{
+		"kube-apiserver":          c.ExtraKubeAPIServerArgs,
+		"kubelet":                 c.ExtraKubeletArgs,
+		"kube-proxy":              c.ExtraKubeProxyArgs,
+		"kube-controller-manager": c.ExtraKubeControllerManagerArgs,
+		"kube-scheduler":          c.ExtraKubeSchedulerArgs,
+	} {
+		if err := s.reconcileServiceArgs(ctx, svc, args); err != nil {
+			return fmt.Errorf("failed to reconcile %q service flags: %w", svc, err)
+		}
 	}
-	if err := l.reconcileKubeAPIServerArgs(ctx, c.ExtraKubeAPIServerArgs); err != nil {
-		return fmt.Errorf("failed to configure extra kube-apiserver args: %w", err)
-	}
-	if err := l.reconcileExtraSANs(c.ExtraSANs); err != nil {
+
+	if err := s.reconcileExtraSANs(c.ExtraSANs); err != nil {
 		return fmt.Errorf("failed to configure SANs for apiserver: %w", err)
 	}
 
 	return nil
 }
 
-func (l *Launcher) reconcileAddons(ctx context.Context, addons []AddonConfiguration) error {
+func (s *launcherScope) reconcileAddons(ctx context.Context, addons []AddonConfiguration) error {
 	for _, addon := range addons {
 		if addon.Disable {
-			if err := l.snap.DisableAddon(ctx, addon.Name, addon.Arguments...); err != nil {
+			if err := s.launcher.snap.DisableAddon(ctx, addon.Name, addon.Arguments...); err != nil {
 				return fmt.Errorf("failed to disable addon %q: %w", addon.Name, err)
 			}
-		} else if err := l.snap.EnableAddon(ctx, addon.Name, addon.Arguments...); err != nil {
+		} else if err := s.launcher.snap.EnableAddon(ctx, addon.Name, addon.Arguments...); err != nil {
 			return fmt.Errorf("failed to enable addon %q: %w", addon.Name, err)
 		}
 	}
 	return nil
 }
 
-func (l *Launcher) reconcileKubeletArgs(ctx context.Context, args map[string]*string) error {
-	return l.reconcileServiceArgs(ctx, "kubelet", args)
-}
-
-func (l *Launcher) reconcileKubeAPIServerArgs(ctx context.Context, args map[string]*string) error {
-	return l.reconcileServiceArgs(ctx, "kube-apiserver", args)
-}
-
-func (l *Launcher) reconcileServiceArgs(ctx context.Context, service string, args map[string]*string) error {
+func (s *launcherScope) reconcileServiceArgs(ctx context.Context, service string, args map[string]*string) error {
 	if len(args) == 0 {
 		return nil
 	}
@@ -79,27 +91,24 @@ func (l *Launcher) reconcileServiceArgs(ctx context.Context, service string, arg
 		}
 	}
 
-	changed, err := snaputil.UpdateServiceArguments(l.snap, service, []map[string]string{updateArgs}, deleteArgs)
+	changed, err := snaputil.UpdateServiceArguments(s.launcher.snap, service, []map[string]string{updateArgs}, deleteArgs)
 	if err != nil {
 		return fmt.Errorf("failed to update service arguments: %w", err)
 	}
 
-	// TODO(neoaggelos): restart services should be deferred until the very end of the function
-	if changed && !l.preInit {
-		if err := l.snap.RestartService(ctx, service); err != nil {
-			return fmt.Errorf("failed to restart kubelet service after updating arguments: %w", err)
-		}
+	if changed {
+		s.needsKubeliteRestart = true
 	}
 
 	return nil
 }
 
-func (l *Launcher) reconcileExtraSANs(extraSANs []string) error {
+func (s *launcherScope) reconcileExtraSANs(extraSANs []string) error {
 	csr, err := util.GenerateCSRConf(extraSANs)
 	if err != nil {
 		return fmt.Errorf("failed to generate csr configuration: %w", err)
 	}
-	if err := l.snap.WriteCSRConfig(csr); err != nil {
+	if err := s.launcher.snap.WriteCSRConfig(csr); err != nil {
 		return fmt.Errorf("failed to write csr configuration: %w", err)
 	}
 	return nil

@@ -55,6 +55,18 @@ type Configuration struct {
 	// Set a value to null to remove it from the arguments.
 	ExtraKubeAPIServerArgs map[string]*string `yaml:"extraKubeAPIServerArgs"`
 
+	// ExtraKubeProxyArgs is a list of extra arguments to add to the local node kube-proxy.
+	// Set a value to null to remove it from the arguments.
+	ExtraKubeProxyArgs map[string]*string `yaml:"extraKubeProxyArgs"`
+
+	// ExtraKubeControllerManagerArgs is a list of extra arguments to add to the local node kube-controller-manager.
+	// Set a value to null to remove it from the arguments.
+	ExtraKubeControllerManagerArgs map[string]*string `yaml:"extraKubeControllerManagerArgs"`
+
+	// ExtraKubeSchedulerArgs is a list of extra arguments to add to the local node kube-scheduler.
+	// Set a value to null to remove it from the arguments.
+	ExtraKubeSchedulerArgs map[string]*string `yaml:"extraKubeSchedulerArgs"`
+
 	// ExtraSANs are a list of extra Subject Alternate Names to add to the local API server.
 	ExtraSANs []string `yaml:"extraSANs"`
 }
@@ -123,7 +135,10 @@ func ParseMultiPartConfiguration(b []byte) (MultiPartConfiguration, error) {
 func (c *Configuration) isZero() bool {
 	return c.Version == "" &&
 		len(c.Addons) == 0 &&
-		len(c.ExtraKubeAPIServerArgs) == 0 &&
 		len(c.ExtraKubeletArgs) == 0 &&
+		len(c.ExtraKubeAPIServerArgs) == 0 &&
+		len(c.ExtraKubeProxyArgs) == 0 &&
+		len(c.ExtraKubeControllerManagerArgs) == 0 &&
+		len(c.ExtraKubeSchedulerArgs) == 0 &&
 		len(c.ExtraSANs) == 0
 }

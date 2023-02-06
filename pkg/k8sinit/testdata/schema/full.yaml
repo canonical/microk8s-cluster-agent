@@ -8,6 +8,14 @@ extraKubeAPIServerArgs:
   --event-ttl: null
 extraKubeletArgs:
   --cluster-dns: 10.152.183.10
+extraKubeProxyArgs:
+  --cluster-cidr: 10.1.0.0/16
+extraKubeControllerManagerArgs:
+  --leader-elect-lease-duration: 30s
+  --leader-elect-renew-deadline: 15s
+extraKubeSchedulerArgs:
+  --leader-elect-lease-duration: 30s
+  --leader-elect-renew-deadline: 15s
 addons:
   - name: dns
   - name: mayastor
