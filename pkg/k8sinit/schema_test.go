@@ -51,6 +51,9 @@ func TestParse(t *testing.T) {
 						{Name: "mayastor", Disable: false, Arguments: []string{"--default-pool-size", "20GB"}},
 						{Name: "registry", Disable: true},
 					},
+					ContainerdRegistryConfigs: map[string]string{
+						"docker.io": `server = "http://my.proxy:5000"`,
+					},
 				}},
 			},
 		},
