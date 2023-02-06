@@ -35,6 +35,17 @@ func TestParse(t *testing.T) {
 						"--authorization-mode": &[]string{"RBAC,Node"}[0],
 						"--event-ttl":          nil,
 					},
+					ExtraKubeProxyArgs: map[string]*string{
+						"--cluster-cidr": &[]string{"10.1.0.0/16"}[0],
+					},
+					ExtraKubeControllerManagerArgs: map[string]*string{
+						"--leader-elect-lease-duration": &[]string{"30s"}[0],
+						"--leader-elect-renew-deadline": &[]string{"15s"}[0],
+					},
+					ExtraKubeSchedulerArgs: map[string]*string{
+						"--leader-elect-lease-duration": &[]string{"30s"}[0],
+						"--leader-elect-renew-deadline": &[]string{"15s"}[0],
+					},
 					Addons: []k8sinit.AddonConfiguration{
 						{Name: "dns", Disable: false},
 						{Name: "mayastor", Disable: false, Arguments: []string{"--default-pool-size", "20GB"}},
