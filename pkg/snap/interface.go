@@ -94,4 +94,8 @@ type Snap interface {
 
 	// WriteCSRConfig updates the csr.conf.template file on the local node.
 	WriteCSRConfig(csrConf []byte) error
+
+	// UpdateContainerdRegistryConfigs writes hosts.toml registry configurations for containerd.
+	// Accepts a map where key is the registry (e.g. "docker.io") and the value is the contents of the hosts.toml file.
+	UpdateContainerdRegistryConfigs(configs map[string][]byte) error
 }

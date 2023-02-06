@@ -64,6 +64,8 @@ type Snap struct {
 	ImportImageCalledWith []string // string(io.ReadAll(reader))
 
 	CSRConfig string
+
+	ContainerdRegistryConfigs map[string]string // map registry name to hosts.toml contents
 }
 
 // GetGroupName is a mock implementation for the snap.Snap interface.
@@ -314,6 +316,17 @@ func (s *Snap) ImportImage(ctx context.Context, reader io.Reader) error {
 // WriteCSRConfig is a mock implementation for the snap.Snap interface.
 func (s *Snap) WriteCSRConfig(b []byte) error {
 	s.CSRConfig = string(b)
+	return nil
+}
+
+// UpdateContainerdRegistryConfigs is a mock implementation for the snap.Snap interface.
+func (s *Snap) UpdateContainerdRegistryConfigs(cfgs map[string][]byte) error {
+	if s.ContainerdRegistryConfigs == nil {
+		s.ContainerdRegistryConfigs = make(map[string]string)
+	}
+	for k, v := range cfgs {
+		s.ContainerdRegistryConfigs[k] = string(v)
+	}
 	return nil
 }
 
