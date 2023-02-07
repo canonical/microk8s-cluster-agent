@@ -38,11 +38,9 @@ func TestAddons(t *testing.T) {
 			c := MultiPartConfiguration{[]*Configuration{
 				{Version: minimumConfigFileVersionRequired.String(), Addons: tc.addons},
 			}}
-			if err := l.Apply(context.Background(), c); err != nil {
-				t.Fatalf("expected no error when applying configuration but got %q instead", err)
-			}
-
 			g := NewWithT(t)
+			err := l.Apply(context.Background(), c)
+			g.Expect(err).To(BeNil())
 
 			g.Expect(s.EnableAddonCalledWith).To(Equal(tc.expectEnableAddons))
 			g.Expect(s.DisableAddonCalledWith).To(Equal(tc.expectDisableAddons))
@@ -74,11 +72,11 @@ func TestExtraServiceArguments(t *testing.T) {
 			},
 		},
 	}}
-	if err := l.Apply(context.Background(), c); err != nil {
-		t.Fatalf("expected no error when applying configuration but got %q instead", err)
-	}
 
 	g := NewWithT(t)
+	err := l.Apply(context.Background(), c)
+	g.Expect(err).To(BeNil())
+
 	g.Expect(s.WriteServiceArgumentsCalled).To(BeTrue())
 
 	g.Expect(s.ServiceArguments["kubelet"]).To(ContainSubstring("--Kubelet-arg=value"))
@@ -88,4 +86,26 @@ func TestExtraServiceArguments(t *testing.T) {
 	g.Expect(s.ServiceArguments["kube-scheduler"]).To(ContainSubstring("--KubeScheduler-arg=value"))
 
 	g.Expect(s.RestartServiceCalledWith).To(ContainElement("kubelite"))
+}
+
+func TestContainerdRegistryConfigs(t *testing.T) {
+	s := &mock.Snap{}
+
+	l := NewLauncher(s, false)
+	c := MultiPartConfiguration{[]*Configuration{
+		{
+			Version: minimumConfigFileVersionRequired.String(),
+			ContainerdRegistryConfigs: map[string]string{
+				"docker.io": `server = "http://dockerhub.mirror:32000"`,
+				"quay.io":   `server = "http://quay.mirror:32000"`,
+			},
+		},
+	}}
+	g := NewWithT(t)
+
+	err := l.Apply(context.Background(), c)
+	g.Expect(err).To(BeNil())
+
+	g.Expect(s.ContainerdRegistryConfigs["docker.io"]).To(Equal(`server = "http://dockerhub.mirror:32000"`))
+	g.Expect(s.ContainerdRegistryConfigs["quay.io"]).To(Equal(`server = "http://quay.mirror:32000"`))
 }

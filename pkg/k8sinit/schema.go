@@ -69,6 +69,9 @@ type Configuration struct {
 
 	// ExtraSANs are a list of extra Subject Alternate Names to add to the local API server.
 	ExtraSANs []string `yaml:"extraSANs"`
+
+	// ContainerdRegistryConfigs is containerd hosts.toml configurations to configure registries.
+	ContainerdRegistryConfigs map[string]string `yaml:"containerdRegistryConfigs"`
 }
 
 // ParseConfiguration tries to parse a Configuration object from YAML data.
@@ -140,5 +143,6 @@ func (c *Configuration) isZero() bool {
 		len(c.ExtraKubeProxyArgs) == 0 &&
 		len(c.ExtraKubeControllerManagerArgs) == 0 &&
 		len(c.ExtraKubeSchedulerArgs) == 0 &&
-		len(c.ExtraSANs) == 0
+		len(c.ExtraSANs) == 0 &&
+		len(c.ContainerdRegistryConfigs) == 0
 }

@@ -22,3 +22,5 @@ addons:
     args: [--default-pool-size, 20GB]
   - name: registry
     disable: true
+containerdRegistryConfigs:
+  docker.io: server = "http://my.proxy:5000"

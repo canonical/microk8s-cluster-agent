@@ -345,4 +345,32 @@ func (s *snap) WriteCSRConfig(csrConf []byte) error {
 	return os.WriteFile(s.snapDataPath("certs", "csr.conf.template"), csrConf, 0660)
 }
 
+func (s *snap) UpdateContainerdRegistryConfigs(configs map[string][]byte) error {
+	relativeHostsDir := s.snapDataPath("args", "certs.d")
+	hostsDir, err := filepath.Abs(relativeHostsDir)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute directory for registry configurations: %w", err)
+	}
+
+	for registry, hostsToml := range configs {
+		relativeDir := filepath.Join(hostsDir, registry)
+		dir, err := filepath.Abs(relativeDir)
+		if err != nil {
+			return fmt.Errorf("failed to get absolute directory for registry %s: %w", registry, err)
+		}
+		if !strings.HasPrefix(dir, hostsDir) {
+			return fmt.Errorf("invalid registry name, possible path-traversal prevented")
+		}
+
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory for registry %s: %w", registry, err)
+		}
+
+		if err := os.WriteFile(filepath.Join(dir, "hosts.toml"), hostsToml, 0644); err != nil {
+			return fmt.Errorf("failed to write hosts.toml for registry %s: %w", registry, err)
+		}
+	}
+	return nil
+}
+
 var _ Snap = &snap{}

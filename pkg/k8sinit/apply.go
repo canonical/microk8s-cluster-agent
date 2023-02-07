@@ -60,6 +60,10 @@ func (s *launcherScope) applyPart(ctx context.Context, c *Configuration) error {
 		return fmt.Errorf("failed to configure SANs for apiserver: %w", err)
 	}
 
+	if err := s.reconcileContainerdRegistryConfigs(c.ContainerdRegistryConfigs); err != nil {
+		return fmt.Errorf("failed to reconcile containerd registry configs: %w", err)
+	}
+
 	return nil
 }
 
@@ -110,6 +114,21 @@ func (s *launcherScope) reconcileExtraSANs(extraSANs []string) error {
 	}
 	if err := s.launcher.snap.WriteCSRConfig(csr); err != nil {
 		return fmt.Errorf("failed to write csr configuration: %w", err)
+	}
+	return nil
+}
+
+func (s *launcherScope) reconcileContainerdRegistryConfigs(configs map[string]string) error {
+	if len(configs) == 0 {
+		return nil
+	}
+	cfgs := make(map[string][]byte, len(configs))
+	for registry, hostsToml := range configs {
+		cfgs[registry] = []byte(hostsToml)
+	}
+
+	if err := s.launcher.snap.UpdateContainerdRegistryConfigs(cfgs); err != nil {
+		return fmt.Errorf("failed to update containerd registry configs: %w", err)
 	}
 	return nil
 }
