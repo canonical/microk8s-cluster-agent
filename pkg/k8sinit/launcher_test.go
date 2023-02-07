@@ -85,7 +85,7 @@ func TestExtraServiceArguments(t *testing.T) {
 	g.Expect(s.ServiceArguments["kube-controller-manager"]).To(ContainSubstring("--KubeControllerManager-arg=value"))
 	g.Expect(s.ServiceArguments["kube-scheduler"]).To(ContainSubstring("--KubeScheduler-arg=value"))
 
-	g.Expect(s.RestartServiceCalledWith).To(ContainElement("kubelite"))
+	g.Expect(s.RestartServiceCalledWith).To(ConsistOf("kubelite"))
 }
 
 func TestContainerdRegistryConfigs(t *testing.T) {
@@ -108,4 +108,62 @@ func TestContainerdRegistryConfigs(t *testing.T) {
 
 	g.Expect(s.ContainerdRegistryConfigs["docker.io"]).To(Equal(`server = "http://dockerhub.mirror:32000"`))
 	g.Expect(s.ContainerdRegistryConfigs["quay.io"]).To(Equal(`server = "http://quay.mirror:32000"`))
+
+	g.Expect(s.RestartServiceCalledWith).To(BeEmpty())
+}
+
+func TestContainerdConfiguration(t *testing.T) {
+	s := &mock.Snap{}
+
+	l := NewLauncher(s, false)
+	c := MultiPartConfiguration{[]*Configuration{
+		{
+			Version: minimumConfigFileVersionRequired.String(),
+			ExtraContainerdArgs: map[string]*string{
+				"-l": &[]string{"debug"}[0],
+			},
+			ExtraContainerdEnv: map[string]*string{
+				"http_proxy":  &[]string{"http://squid.internal:3128"}[0],
+				"https_proxy": &[]string{"http://squid.internal:3128"}[0],
+			},
+		},
+	}}
+	g := NewWithT(t)
+
+	err := l.Apply(context.Background(), c)
+	g.Expect(err).To(BeNil())
+
+	g.Expect(s.ServiceArguments["containerd"]).To(ContainSubstring("-l=debug\n"))
+	g.Expect(s.ServiceArguments["containerd-env"]).To(ContainSubstring("http_proxy=http://squid.internal:3128\n"))
+	g.Expect(s.ServiceArguments["containerd-env"]).To(ContainSubstring("https_proxy=http://squid.internal:3128\n"))
+
+	g.Expect(s.RestartServiceCalledWith).To(ConsistOf("containerd"))
+}
+
+func TestDqliteConfiguration(t *testing.T) {
+	s := &mock.Snap{}
+
+	l := NewLauncher(s, false)
+	c := MultiPartConfiguration{[]*Configuration{
+		{
+			Version: minimumConfigFileVersionRequired.String(),
+			ExtraDqliteArgs: map[string]*string{
+				"--disk-mode": &[]string{"true"}[0],
+			},
+			ExtraDqliteEnv: map[string]*string{
+				"LIBRAFT_TRACE":   &[]string{"1"}[0],
+				"LIBDQLITE_TRACE": &[]string{"1"}[0],
+			},
+		},
+	}}
+	g := NewWithT(t)
+
+	err := l.Apply(context.Background(), c)
+	g.Expect(err).To(BeNil())
+
+	g.Expect(s.ServiceArguments["k8s-dqlite"]).To(ContainSubstring("--disk-mode=true\n"))
+	g.Expect(s.ServiceArguments["k8s-dqlite-env"]).To(ContainSubstring("LIBRAFT_TRACE=1\n"))
+	g.Expect(s.ServiceArguments["k8s-dqlite-env"]).To(ContainSubstring("LIBDQLITE_TRACE=1\n"))
+
+	g.Expect(s.RestartServiceCalledWith).To(ConsistOf("k8s-dqlite"))
 }

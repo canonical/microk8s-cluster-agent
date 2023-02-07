@@ -72,6 +72,22 @@ type Configuration struct {
 
 	// ContainerdRegistryConfigs is containerd hosts.toml configurations to configure registries.
 	ContainerdRegistryConfigs map[string]string `yaml:"containerdRegistryConfigs"`
+
+	// ExtraContainerdArgs is a list of extra arguments to add to the local node containerd.
+	// Set a value to null to remove it from the arguments.
+	ExtraContainerdArgs map[string]*string `yaml:"extraContainerdArgs"`
+
+	// ExtraContainerdEnv is extra environment variables (e.g. proxy configuration) for the local node containerd.
+	// Set a value to null to remove it from the environment.
+	ExtraContainerdEnv map[string]*string `yaml:"extraContainerdEnv"`
+
+	// ExtraDqliteArgs is a list of extra arguments to add to the local node Dqlite.
+	// Set a value to null to remove it from the arguments.
+	ExtraDqliteArgs map[string]*string `yaml:"extraDqliteArgs"`
+
+	// ExtraDqliteEnv is extra environment variables (e.g. dqlite debug flags) for the local node dqlite.
+	// Set a value to null to remove it from the environment.
+	ExtraDqliteEnv map[string]*string `yaml:"extraDqliteEnv"`
 }
 
 // ParseConfiguration tries to parse a Configuration object from YAML data.
@@ -136,13 +152,33 @@ func ParseMultiPartConfiguration(b []byte) (MultiPartConfiguration, error) {
 // isZero returns true if all configuration values are zero/empty.
 // NOTE(neoaggelos): this needs to be updated when new fields are added to the Configuration struct.
 func (c *Configuration) isZero() bool {
-	return c.Version == "" &&
-		len(c.Addons) == 0 &&
-		len(c.ExtraKubeletArgs) == 0 &&
-		len(c.ExtraKubeAPIServerArgs) == 0 &&
-		len(c.ExtraKubeProxyArgs) == 0 &&
-		len(c.ExtraKubeControllerManagerArgs) == 0 &&
-		len(c.ExtraKubeSchedulerArgs) == 0 &&
-		len(c.ExtraSANs) == 0 &&
-		len(c.ContainerdRegistryConfigs) == 0
+	switch {
+	case c.Version != "":
+		return false
+	case len(c.Addons) > 0:
+		return false
+	case len(c.ExtraKubeletArgs) > 0:
+		return false
+	case len(c.ExtraKubeAPIServerArgs) > 0:
+		return false
+	case len(c.ExtraKubeProxyArgs) > 0:
+		return false
+	case len(c.ExtraKubeControllerManagerArgs) > 0:
+		return false
+	case len(c.ExtraKubeSchedulerArgs) > 0:
+		return false
+	case len(c.ExtraSANs) > 0:
+		return false
+	case len(c.ContainerdRegistryConfigs) > 0:
+		return false
+	case len(c.ExtraContainerdArgs) > 0:
+		return false
+	case len(c.ExtraContainerdEnv) > 0:
+		return false
+	case len(c.ExtraDqliteArgs) > 0:
+		return false
+	case len(c.ExtraDqliteEnv) > 0:
+		return false
+	}
+	return true
 }

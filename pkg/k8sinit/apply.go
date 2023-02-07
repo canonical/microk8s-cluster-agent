@@ -11,22 +11,25 @@ import (
 type launcherScope struct {
 	launcher *Launcher
 
-	needsKubeliteRestart bool
+	mustRestartServices map[string]struct{}
 }
 
 // Apply applies a multi-part configuration to the local MicroK8s node.
 func (l *Launcher) Apply(ctx context.Context, c MultiPartConfiguration) error {
 	s := &launcherScope{
-		launcher: l,
+		launcher:            l,
+		mustRestartServices: make(map[string]struct{}),
 	}
 	for idx, part := range c.Parts {
 		if err := s.applyPart(ctx, part); err != nil {
 			return fmt.Errorf("failed to apply config part %d: %w", idx, err)
 		}
 	}
-	if !s.launcher.preInit && s.needsKubeliteRestart {
-		if err := s.launcher.snap.RestartService(ctx, "kubelite"); err != nil {
-			return fmt.Errorf("failed to restart kubelite to apply configuration: %w", err)
+	if !s.launcher.preInit {
+		for svc := range s.mustRestartServices {
+			if err := s.launcher.snap.RestartService(ctx, svc); err != nil {
+				return fmt.Errorf("failed to restart service %s to apply configuration: %w", svc, err)
+			}
 		}
 	}
 	return nil
@@ -44,15 +47,25 @@ func (s *launcherScope) applyPart(ctx context.Context, c *Configuration) error {
 		}
 	}
 
-	for svc, args := range map[string]map[string]*string{
-		"kube-apiserver":          c.ExtraKubeAPIServerArgs,
-		"kubelet":                 c.ExtraKubeletArgs,
-		"kube-proxy":              c.ExtraKubeProxyArgs,
-		"kube-controller-manager": c.ExtraKubeControllerManagerArgs,
-		"kube-scheduler":          c.ExtraKubeSchedulerArgs,
+	for _, item := range []struct {
+		configFile     string
+		restartService string
+		args           map[string]*string
+	}{
+		{configFile: "kube-apiserver", restartService: "kubelite", args: c.ExtraKubeAPIServerArgs},
+		{configFile: "kubelet", restartService: "kubelite", args: c.ExtraKubeletArgs},
+		{configFile: "kube-proxy", restartService: "kubelite", args: c.ExtraKubeProxyArgs},
+		{configFile: "kube-controller-manager", restartService: "kubelite", args: c.ExtraKubeControllerManagerArgs},
+		{configFile: "kube-scheduler", restartService: "kubelite", args: c.ExtraKubeSchedulerArgs},
+		{configFile: "containerd", restartService: "containerd", args: c.ExtraContainerdArgs},
+		{configFile: "containerd-env", restartService: "containerd", args: c.ExtraContainerdEnv},
+		{configFile: "k8s-dqlite", restartService: "k8s-dqlite", args: c.ExtraDqliteArgs},
+		{configFile: "k8s-dqlite-env", restartService: "k8s-dqlite", args: c.ExtraDqliteEnv},
 	} {
-		if err := s.reconcileServiceArgs(ctx, svc, args); err != nil {
-			return fmt.Errorf("failed to reconcile %q service flags: %w", svc, err)
+		if changed, err := s.reconcileServiceArgs(ctx, item.configFile, item.args); err != nil {
+			return fmt.Errorf("failed to reconcile config file %q: %w", item.configFile, err)
+		} else if changed {
+			s.mustRestartServices[item.restartService] = struct{}{}
 		}
 	}
 
@@ -80,9 +93,9 @@ func (s *launcherScope) reconcileAddons(ctx context.Context, addons []AddonConfi
 	return nil
 }
 
-func (s *launcherScope) reconcileServiceArgs(ctx context.Context, service string, args map[string]*string) error {
+func (s *launcherScope) reconcileServiceArgs(ctx context.Context, configFile string, args map[string]*string) (bool, error) {
 	if len(args) == 0 {
-		return nil
+		return false, nil
 	}
 	updateArgs := map[string]string{}
 	deleteArgs := []string{}
@@ -95,16 +108,11 @@ func (s *launcherScope) reconcileServiceArgs(ctx context.Context, service string
 		}
 	}
 
-	changed, err := snaputil.UpdateServiceArguments(s.launcher.snap, service, []map[string]string{updateArgs}, deleteArgs)
+	changed, err := snaputil.UpdateServiceArguments(s.launcher.snap, configFile, []map[string]string{updateArgs}, deleteArgs)
 	if err != nil {
-		return fmt.Errorf("failed to update service arguments: %w", err)
+		return false, fmt.Errorf("failed to update arguments: %w", err)
 	}
-
-	if changed {
-		s.needsKubeliteRestart = true
-	}
-
-	return nil
+	return changed, nil
 }
 
 func (s *launcherScope) reconcileExtraSANs(extraSANs []string) error {
