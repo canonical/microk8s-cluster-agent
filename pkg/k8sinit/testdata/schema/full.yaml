@@ -16,6 +16,16 @@ extraKubeControllerManagerArgs:
 extraKubeSchedulerArgs:
   --leader-elect-lease-duration: 30s
   --leader-elect-renew-deadline: 15s
+extraContainerdArgs:
+  -l: debug
+extraContainerdEnv:
+  http_proxy: http://squid.internal:3128
+  https_proxy: http://squid.internal:3128
+extraDqliteArgs:
+  --disk-mode: "true"
+extraDqliteEnv:
+  LIBRAFT_TRACE: "1"
+  LIBDQLITE_TRACE: "1"
 addons:
   - name: dns
   - name: mayastor

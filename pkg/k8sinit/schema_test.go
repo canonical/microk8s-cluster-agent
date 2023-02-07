@@ -54,6 +54,20 @@ func TestParse(t *testing.T) {
 					ContainerdRegistryConfigs: map[string]string{
 						"docker.io": `server = "http://my.proxy:5000"`,
 					},
+					ExtraContainerdArgs: map[string]*string{
+						"-l": &[]string{"debug"}[0],
+					},
+					ExtraContainerdEnv: map[string]*string{
+						"http_proxy":  &[]string{"http://squid.internal:3128"}[0],
+						"https_proxy": &[]string{"http://squid.internal:3128"}[0],
+					},
+					ExtraDqliteArgs: map[string]*string{
+						"--disk-mode": &[]string{"true"}[0],
+					},
+					ExtraDqliteEnv: map[string]*string{
+						"LIBRAFT_TRACE":   &[]string{"1"}[0],
+						"LIBDQLITE_TRACE": &[]string{"1"}[0],
+					},
 				}},
 			},
 		},
