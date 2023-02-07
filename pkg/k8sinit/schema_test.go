@@ -3,10 +3,11 @@ package k8sinit_test
 import (
 	"embed"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/k8sinit"
+
+	. "github.com/onsi/gomega"
 )
 
 //go:embed testdata
@@ -23,6 +24,28 @@ func TestParse(t *testing.T) {
 			expectConfiguration: k8sinit.MultiPartConfiguration{
 				Parts: []*k8sinit.Configuration{{
 					Version: "0.1.0",
+					ExtraSANs: []string{
+						"10.10.10.10",
+						"microk8s.example.com",
+					},
+					ExtraKubeletArgs: map[string]*string{
+						"--cluster-dns": &[]string{"10.152.183.10"}[0],
+					},
+					ExtraKubeAPIServerArgs: map[string]*string{
+						"--authorization-mode": &[]string{"RBAC,Node"}[0],
+						"--event-ttl":          nil,
+					},
+					ExtraKubeProxyArgs: map[string]*string{
+						"--cluster-cidr": &[]string{"10.1.0.0/16"}[0],
+					},
+					ExtraKubeControllerManagerArgs: map[string]*string{
+						"--leader-elect-lease-duration": &[]string{"30s"}[0],
+						"--leader-elect-renew-deadline": &[]string{"15s"}[0],
+					},
+					ExtraKubeSchedulerArgs: map[string]*string{
+						"--leader-elect-lease-duration": &[]string{"30s"}[0],
+						"--leader-elect-renew-deadline": &[]string{"15s"}[0],
+					},
 					Addons: []k8sinit.AddonConfiguration{
 						{Name: "dns", Disable: false},
 						{Name: "mayastor", Disable: false, Arguments: []string{"--default-pool-size", "20GB"}},
@@ -64,21 +87,19 @@ func TestParse(t *testing.T) {
 		{name: "version/unsupported.yaml", expectErr: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			g := NewWithT(t)
 			b, err := testdata.ReadFile(filepath.Join("testdata", "schema", filepath.Join(tc.name)))
 			if err != nil {
 				panic(err)
 			}
 
 			c, err := k8sinit.ParseMultiPartConfiguration(b)
-			switch {
-			case err != nil && !tc.expectErr:
-				t.Fatalf("did not expect an error but got %q instead", err)
-			case err == nil && tc.expectErr:
-				t.Fatal("expected an error but did not get any")
-			case err != nil && len(c.Parts) > 0:
-				t.Fatalf("expected empty configuration on error but got %#v instead", c)
-			case err == nil && !reflect.DeepEqual(c, tc.expectConfiguration):
-				t.Fatalf("Expected configuration %#v but parsed %#v instead", tc.expectConfiguration, c)
+			if tc.expectErr {
+				g.Expect(err).NotTo(BeNil())
+				g.Expect(c).To(BeZero())
+			} else {
+				g.Expect(err).To(BeNil())
+				g.Expect(c).To(Equal(tc.expectConfiguration))
 			}
 		})
 	}
