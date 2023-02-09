@@ -67,6 +67,9 @@ type Configuration struct {
 	// Set a value to null to remove it from the arguments.
 	ExtraKubeSchedulerArgs map[string]*string `yaml:"extraKubeSchedulerArgs"`
 
+	// ExtraKubeliteEnv is extra environment variables (e.g. GOFIPS) for the local node Kubernetes services.
+	ExtraKubeliteEnv map[string]*string `yaml:"extraKubeliteEnv"`
+
 	// ExtraSANs are a list of extra Subject Alternate Names to add to the local API server.
 	ExtraSANs []string `yaml:"extraSANs"`
 
@@ -88,6 +91,38 @@ type Configuration struct {
 	// ExtraDqliteEnv is extra environment variables (e.g. dqlite debug flags) for the local node dqlite.
 	// Set a value to null to remove it from the environment.
 	ExtraDqliteEnv map[string]*string `yaml:"extraDqliteEnv"`
+
+	// ExtraMicroK8sClusterAgentArgs is a list of extra arguments to add to the local node cluster-agent.
+	// Set a value to null to remove it from the arguments.
+	ExtraMicroK8sClusterAgentArgs map[string]*string `yaml:"extraMicroK8sClusterAgentArgs"`
+
+	// ExtraMicroK8sClusterAgentEnv is extra environment variables (e.g. GOFIPS) for the local node cluster-agent.
+	// Set a value to null to remove it from the environment.
+	ExtraMicroK8sClusterAgentEnv map[string]*string `yaml:"extraMicroK8sClusterAgentEnv"`
+
+	// ExtraMicroK8sAPIServerProxyArgs is a list of extra arguments (e.g. --refresh-interval) to add to the local node apiserver-proxy used by worker nodes.
+	// Set a value to null to remove it from the arguments.
+	ExtraMicroK8sAPIServerProxyArgs map[string]*string `yaml:"extraMicroK8sAPIServerProxyArgs"`
+
+	// ExtraMicroK8sAPIServerProxyEnv is extra environment variables (e.g. GOFIPS) for the local node apiserver-proxy.
+	// Set a value to null to remove it from the environment.
+	ExtraMicroK8sAPIServerProxyEnv map[string]*string `yaml:"extraMicroK8sAPIServerProxyEnv"`
+
+	// ExtraEtcdArgs is a list of extra arguments to add to the local node etcd.
+	// Set a value to null to remove it from the arguments.
+	ExtraEtcdArgs map[string]*string `yaml:"extraEtcdArgs"`
+
+	// ExtraEtcdEnv is extra environment variables (e.g. GOFIPS) for the local node etcd.
+	// Set a value to null to remove it from the environment.
+	ExtraEtcdEnv map[string]*string `yaml:"extraEtcdEnv"`
+
+	// ExtraFlanneldArgs is a list of extra arguments to add to the local node flanneld.
+	// Set a value to null to remove it from the arguments.
+	ExtraFlanneldArgs map[string]*string `yaml:"extraFlanneldArgs"`
+
+	// ExtraFlanneldEnv is extra environment variables (e.g. GOFIPS) for the local node flanneld.
+	// Set a value to null to remove it from the environment.
+	ExtraFlanneldEnv map[string]*string `yaml:"extraFlanneldEnv"`
 }
 
 // ParseConfiguration tries to parse a Configuration object from YAML data.
@@ -167,6 +202,8 @@ func (c *Configuration) isZero() bool {
 		return false
 	case len(c.ExtraKubeSchedulerArgs) > 0:
 		return false
+	case len(c.ExtraKubeliteEnv) > 0:
+		return false
 	case len(c.ExtraSANs) > 0:
 		return false
 	case len(c.ContainerdRegistryConfigs) > 0:
@@ -178,6 +215,22 @@ func (c *Configuration) isZero() bool {
 	case len(c.ExtraDqliteArgs) > 0:
 		return false
 	case len(c.ExtraDqliteEnv) > 0:
+		return false
+	case len(c.ExtraMicroK8sClusterAgentArgs) > 0:
+		return false
+	case len(c.ExtraMicroK8sClusterAgentEnv) > 0:
+		return false
+	case len(c.ExtraMicroK8sAPIServerProxyArgs) > 0:
+		return false
+	case len(c.ExtraMicroK8sAPIServerProxyEnv) > 0:
+		return false
+	case len(c.ExtraEtcdArgs) > 0:
+		return false
+	case len(c.ExtraEtcdEnv) > 0:
+		return false
+	case len(c.ExtraFlanneldArgs) > 0:
+		return false
+	case len(c.ExtraFlanneldEnv) > 0:
 		return false
 	}
 	return true
