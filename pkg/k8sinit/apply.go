@@ -57,10 +57,19 @@ func (s *launcherScope) applyPart(ctx context.Context, c *Configuration) error {
 		{configFile: "kube-proxy", restartService: "kubelite", args: c.ExtraKubeProxyArgs},
 		{configFile: "kube-controller-manager", restartService: "kubelite", args: c.ExtraKubeControllerManagerArgs},
 		{configFile: "kube-scheduler", restartService: "kubelite", args: c.ExtraKubeSchedulerArgs},
+		{configFile: "kubelite-env", restartService: "kubelite", args: c.ExtraKubeliteEnv},
 		{configFile: "containerd", restartService: "containerd", args: c.ExtraContainerdArgs},
 		{configFile: "containerd-env", restartService: "containerd", args: c.ExtraContainerdEnv},
 		{configFile: "k8s-dqlite", restartService: "k8s-dqlite", args: c.ExtraDqliteArgs},
 		{configFile: "k8s-dqlite-env", restartService: "k8s-dqlite", args: c.ExtraDqliteEnv},
+		{configFile: "cluster-agent", restartService: "cluster-agent", args: c.ExtraMicroK8sClusterAgentArgs},
+		{configFile: "cluster-agent-env", restartService: "cluster-agent", args: c.ExtraMicroK8sClusterAgentEnv},
+		{configFile: "apiserver-proxy", restartService: "apiserver-proxy", args: c.ExtraMicroK8sAPIServerProxyArgs},
+		{configFile: "apiserver-proxy-env", restartService: "apiserver-proxy", args: c.ExtraMicroK8sAPIServerProxyEnv},
+		{configFile: "etcd", restartService: "etcd", args: c.ExtraEtcdArgs},
+		{configFile: "etcd-env", restartService: "etcd", args: c.ExtraEtcdEnv},
+		{configFile: "flanneld", restartService: "flanneld", args: c.ExtraFlanneldArgs},
+		{configFile: "flanneld-env", restartService: "flanneld", args: c.ExtraFlanneldEnv},
 	} {
 		if changed, err := s.reconcileServiceArgs(ctx, item.configFile, item.args); err != nil {
 			return fmt.Errorf("failed to reconcile config file %q: %w", item.configFile, err)
