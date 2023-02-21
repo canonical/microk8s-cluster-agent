@@ -26,6 +26,16 @@ func NewServer(timeout time.Duration, enableMetrics bool, apiv1 *v1.API, apiv2 *
 		httputil.Error(w, http.StatusNotFound, fmt.Errorf("not found"))
 	}))
 
+	// GET /health
+	server.HandleFunc("/health", withMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		httputil.Response(w, map[string]string{"status": "OK"})
+	}))
+
 	// Prometheus metrics
 	if enableMetrics {
 		server.HandleFunc("/metrics", withMiddleware(promhttp.Handler().ServeHTTP))
