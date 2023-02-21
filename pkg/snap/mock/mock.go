@@ -61,7 +61,8 @@ type Snap struct {
 	SignCertificateCalledWith []string // string(csrPEM)
 	SignedCertificate         string
 
-	ImportImageCalledWith []string // string(io.ReadAll(reader))
+	ImportImageCalledWith      []string // string(io.ReadAll(reader))
+	ImportImageMockReturnValue error    // returned by s.ImportImage
 
 	CSRConfig string
 
@@ -310,7 +311,7 @@ func (s *Snap) ImportImage(ctx context.Context, reader io.Reader) error {
 	}
 	b, _ := io.ReadAll(reader)
 	s.ImportImageCalledWith = append(s.ImportImageCalledWith, string(b))
-	return nil
+	return s.ImportImageMockReturnValue
 }
 
 // WriteCSRConfig is a mock implementation for the snap.Snap interface.

@@ -123,6 +123,9 @@ type Configuration struct {
 	// ExtraFlanneldEnv is extra environment variables (e.g. GOFIPS) for the local node flanneld.
 	// Set a value to null to remove it from the environment.
 	ExtraFlanneldEnv map[string]*string `yaml:"extraFlanneldEnv"`
+
+	// ContainerdImportImages is a list of tar files with images to load into containerd.
+	ContainerdImportImages []string `yaml:"containerdImportImages"`
 }
 
 // ParseConfiguration tries to parse a Configuration object from YAML data.
@@ -231,6 +234,8 @@ func (c *Configuration) isZero() bool {
 	case len(c.ExtraFlanneldArgs) > 0:
 		return false
 	case len(c.ExtraFlanneldEnv) > 0:
+		return false
+	case len(c.ContainerdImportImages) > 0:
 		return false
 	}
 	return true

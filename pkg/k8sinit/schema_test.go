@@ -68,6 +68,9 @@ func TestParse(t *testing.T) {
 						"LIBRAFT_TRACE":   &[]string{"1"}[0],
 						"LIBDQLITE_TRACE": &[]string{"1"}[0],
 					},
+					ContainerdImportImages: []string{
+						"/var/snap/microk8s/common/images/archive.tar",
+					},
 				}},
 			},
 		},

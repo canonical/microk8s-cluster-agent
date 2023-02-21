@@ -3,6 +3,7 @@ package k8sinit
 import (
 	"context"
 	"fmt"
+	"os"
 
 	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
@@ -44,6 +45,10 @@ func (s *launcherScope) applyPart(ctx context.Context, c *Configuration) error {
 	if !s.launcher.preInit {
 		if err := s.reconcileAddons(ctx, c.Addons); err != nil {
 			return fmt.Errorf("failed to reconcile addons: %w", err)
+		}
+
+		if err := s.reconcileContainerdImportImages(ctx, c.ContainerdImportImages); err != nil {
+			return fmt.Errorf("failed to import containerd images: %w", err)
 		}
 	}
 
@@ -147,5 +152,25 @@ func (s *launcherScope) reconcileContainerdRegistryConfigs(configs map[string]st
 	if err := s.launcher.snap.UpdateContainerdRegistryConfigs(cfgs); err != nil {
 		return fmt.Errorf("failed to update containerd registry configs: %w", err)
 	}
+	return nil
+}
+
+func (s *launcherScope) reconcileContainerdImportImages(ctx context.Context, images []string) error {
+	if len(images) == 0 {
+		return nil
+	}
+
+	for _, image := range images {
+		f, err := os.Open(image)
+		if err != nil {
+			return fmt.Errorf("could not open image file: %w", err)
+		}
+
+		if err := s.launcher.snap.ImportImage(ctx, f); err != nil {
+			return fmt.Errorf("failed to import %q: %w", image, err)
+		}
+	}
+
+	s.mustRestartServices["containerd"] = struct{}{}
 	return nil
 }

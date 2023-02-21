@@ -34,3 +34,5 @@ addons:
     disable: true
 containerdRegistryConfigs:
   docker.io: server = "http://my.proxy:5000"
+containerdImportImages:
+  - /var/snap/microk8s/common/images/archive.tar

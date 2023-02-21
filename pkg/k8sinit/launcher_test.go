@@ -73,6 +73,69 @@ func TestContainerdRegistryConfigs(t *testing.T) {
 	g.Expect(s.RestartServiceCalledWith).To(BeEmpty())
 }
 
+func TestContainerdImportImages(t *testing.T) {
+	c := MultiPartConfiguration{[]*Configuration{{
+		Version:                minimumConfigFileVersionRequired.String(),
+		ContainerdImportImages: []string{"testdata/images/a.tar", "testdata/images/b.tar"},
+	}}}
+
+	t.Run("PreInit", func(t *testing.T) {
+		s := &mock.Snap{}
+		l := NewLauncher(s, true)
+
+		g := NewWithT(t)
+		err := l.Apply(context.Background(), c)
+		g.Expect(err).To(BeNil())
+
+		g.Expect(s.ImportImageCalledWith).To(BeEmpty())
+		g.Expect(s.RestartServiceCalledWith).To(BeEmpty())
+	})
+
+	t.Run("Normal", func(t *testing.T) {
+		s := &mock.Snap{}
+		l := NewLauncher(s, false)
+
+		g := NewWithT(t)
+		err := l.Apply(context.Background(), c)
+		g.Expect(err).To(BeNil())
+
+		g.Expect(s.ImportImageCalledWith).To(ConsistOf("MOCK A TAR\n", "MOCK B TAR\n"))
+		g.Expect(s.RestartServiceCalledWith).To(ConsistOf("containerd"))
+	})
+
+	t.Run("NotFound", func(t *testing.T) {
+		s := &mock.Snap{}
+
+		c := MultiPartConfiguration{[]*Configuration{{
+			Version:                minimumConfigFileVersionRequired.String(),
+			ContainerdImportImages: []string{"testdata/images/missing.tar"},
+		}}}
+		l := NewLauncher(s, false)
+
+		g := NewWithT(t)
+		err := l.Apply(context.Background(), c)
+		g.Expect(err).NotTo(BeNil())
+
+		g.Expect(s.ImportImageCalledWith).To(BeEmpty())
+		g.Expect(s.RestartServiceCalledWith).To(BeEmpty())
+	})
+
+	t.Run("FailedToImport", func(t *testing.T) {
+		s := &mock.Snap{
+			ImportImageMockReturnValue: fmt.Errorf("some error"),
+		}
+
+		l := NewLauncher(s, false)
+
+		g := NewWithT(t)
+		err := l.Apply(context.Background(), c)
+		g.Expect(err).NotTo(BeNil())
+
+		g.Expect(s.ImportImageCalledWith).To(ConsistOf("MOCK A TAR\n"))
+		g.Expect(s.RestartServiceCalledWith).To(BeEmpty())
+	})
+}
+
 func TestComponentConfiguration(t *testing.T) {
 	for _, tc := range []struct {
 		name                 string
