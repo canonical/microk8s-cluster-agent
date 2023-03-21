@@ -98,4 +98,7 @@ type Snap interface {
 	// UpdateContainerdRegistryConfigs writes hosts.toml registry configurations for containerd.
 	// Accepts a map where key is the registry (e.g. "docker.io") and the value is the contents of the hosts.toml file.
 	UpdateContainerdRegistryConfigs(configs map[string][]byte) error
+
+	// AddAddonsRepository configures an addons repository on the local node, similar to running the 'microk8s addons repo add' command.
+	AddAddonsRepository(ctx context.Context, name, url, reference string, force bool) error
 }

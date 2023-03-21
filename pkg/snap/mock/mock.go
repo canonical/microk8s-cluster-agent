@@ -10,6 +10,13 @@ import (
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 )
 
+// AddonRepository is a mock for the current state of an addon repository.
+type AddonRepository struct {
+	URL       string
+	Reference string
+	Force     bool
+}
+
 // Snap is a generic mock for the snap.Snap interface.
 type Snap struct {
 	GroupName string
@@ -66,6 +73,8 @@ type Snap struct {
 	CSRConfig string
 
 	ContainerdRegistryConfigs map[string]string // map registry name to hosts.toml contents
+
+	AddonRepositories map[string]AddonRepository
 }
 
 // GetGroupName is a mock implementation for the snap.Snap interface.
@@ -326,6 +335,20 @@ func (s *Snap) UpdateContainerdRegistryConfigs(cfgs map[string][]byte) error {
 	}
 	for k, v := range cfgs {
 		s.ContainerdRegistryConfigs[k] = string(v)
+	}
+	return nil
+}
+
+// AddAddonsRepository is a mock implementation for the snap.Snap interface.
+func (s *Snap) AddAddonsRepository(ctx context.Context, name, url, reference string, force bool) error {
+	if s.AddonRepositories == nil {
+		s.AddonRepositories = make(map[string]AddonRepository)
+	}
+
+	s.AddonRepositories[name] = AddonRepository{
+		URL:       url,
+		Reference: reference,
+		Force:     force,
 	}
 	return nil
 }

@@ -373,4 +373,18 @@ func (s *snap) UpdateContainerdRegistryConfigs(configs map[string][]byte) error 
 	return nil
 }
 
+func (s *snap) AddAddonsRepository(ctx context.Context, name, url, reference string, force bool) error {
+	cmd := []string{filepath.Join(s.snapPath("microk8s-addons.wrapper")), "repo", "add", name, url}
+	if reference != "" {
+		cmd = append(cmd, "--reference", reference)
+	}
+	if force {
+		cmd = append(cmd, "--force")
+	}
+	if err := s.runCommand(ctx, cmd...); err != nil {
+		return fmt.Errorf("failed to execute addons repo add command: %w", err)
+	}
+	return nil
+}
+
 var _ Snap = &snap{}
