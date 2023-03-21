@@ -33,6 +33,16 @@ type AddonConfiguration struct {
 	Arguments []string `yaml:"args"`
 }
 
+// AddonRepositoryConfiguration specifies an addon repository to be added.
+type AddonRepositoryConfiguration struct {
+	// Name of the addon repository.
+	Name string `yaml:"name"`
+	// URL of the addon repository.
+	URL string `yaml:"url"`
+	// Reference is an optional reference to check out instead of the default branch.
+	Reference string `yaml:"reference"`
+}
+
 // MultiPartConfiguration is a configuration split into multiple parts.
 type MultiPartConfiguration struct {
 	// Parts are configuration objects that are meant to be applied in order.
@@ -43,6 +53,9 @@ type MultiPartConfiguration struct {
 type Configuration struct {
 	// Version is the semantic version of the configuration file format.
 	Version string `yaml:"version"`
+
+	// AddonRepositories is extra addon repositories to configure on the local node.
+	AddonRepositories []AddonRepositoryConfiguration `yaml:"addonRepositories"`
 
 	// Addons is a list of addons to enable and/or disable.
 	Addons []AddonConfiguration `yaml:"addons"`
@@ -189,6 +202,8 @@ func ParseMultiPartConfiguration(b []byte) (MultiPartConfiguration, error) {
 func (c *Configuration) isZero() bool {
 	switch {
 	case c.Version != "":
+		return false
+	case len(c.AddonRepositories) > 0:
 		return false
 	case len(c.Addons) > 0:
 		return false

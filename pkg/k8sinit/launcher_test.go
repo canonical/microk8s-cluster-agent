@@ -49,6 +49,40 @@ func TestAddons(t *testing.T) {
 	}
 }
 
+func TestAddonRepositories(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		repos       []AddonRepositoryConfiguration
+		expectRepos map[string]mock.AddonRepository
+	}{
+		{
+			name: "simple",
+			repos: []AddonRepositoryConfiguration{
+				{Name: "core", URL: "https://github.com/canonical/microk8s-core-addons"},
+				{Name: "community", URL: "https://github.com/canonical/microk8s-core-addons", Reference: "custom-branch"},
+			},
+			expectRepos: map[string]mock.AddonRepository{
+				"core":      {URL: "https://github.com/canonical/microk8s-core-addons", Force: true},
+				"community": {URL: "https://github.com/canonical/microk8s-core-addons", Reference: "custom-branch", Force: true},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &mock.Snap{}
+
+			l := NewLauncher(s, false)
+			c := MultiPartConfiguration{[]*Configuration{
+				{Version: minimumConfigFileVersionRequired.String(), AddonRepositories: tc.repos},
+			}}
+			g := NewWithT(t)
+			err := l.Apply(context.Background(), c)
+			g.Expect(err).To(BeNil())
+
+			g.Expect(s.AddonRepositories).To(Equal(tc.expectRepos))
+		})
+	}
+}
+
 func TestContainerdRegistryConfigs(t *testing.T) {
 	s := &mock.Snap{}
 
