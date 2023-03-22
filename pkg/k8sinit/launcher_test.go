@@ -33,18 +33,27 @@ func TestAddons(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s := &mock.Snap{}
+			for _, preInit := range []bool{false, true} {
+				t.Run(fmt.Sprintf("preInit=%v", preInit), func(t *testing.T) {
+					s := &mock.Snap{}
 
-			l := NewLauncher(s, false)
-			c := MultiPartConfiguration{[]*Configuration{
-				{Version: minimumConfigFileVersionRequired.String(), Addons: tc.addons},
-			}}
-			g := NewWithT(t)
-			err := l.Apply(context.Background(), c)
-			g.Expect(err).To(BeNil())
+					l := NewLauncher(s, preInit)
+					c := MultiPartConfiguration{[]*Configuration{
+						{Version: minimumConfigFileVersionRequired.String(), Addons: tc.addons},
+					}}
+					g := NewWithT(t)
+					err := l.Apply(context.Background(), c)
+					g.Expect(err).To(BeNil())
 
-			g.Expect(s.EnableAddonCalledWith).To(Equal(tc.expectEnableAddons))
-			g.Expect(s.DisableAddonCalledWith).To(Equal(tc.expectDisableAddons))
+					if !preInit {
+						g.Expect(s.EnableAddonCalledWith).To(Equal(tc.expectEnableAddons))
+						g.Expect(s.DisableAddonCalledWith).To(Equal(tc.expectDisableAddons))
+					} else {
+						g.Expect(s.EnableAddonCalledWith).To(BeEmpty())
+						g.Expect(s.DisableAddonCalledWith).To(BeEmpty())
+					}
+				})
+			}
 		})
 	}
 }
@@ -68,17 +77,25 @@ func TestAddonRepositories(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s := &mock.Snap{}
+			for _, preInit := range []bool{false, true} {
+				t.Run(fmt.Sprintf("preInit=%v", preInit), func(t *testing.T) {
+					s := &mock.Snap{}
 
-			l := NewLauncher(s, false)
-			c := MultiPartConfiguration{[]*Configuration{
-				{Version: minimumConfigFileVersionRequired.String(), AddonRepositories: tc.repos},
-			}}
-			g := NewWithT(t)
-			err := l.Apply(context.Background(), c)
-			g.Expect(err).To(BeNil())
+					l := NewLauncher(s, preInit)
+					c := MultiPartConfiguration{[]*Configuration{
+						{Version: minimumConfigFileVersionRequired.String(), AddonRepositories: tc.repos},
+					}}
+					g := NewWithT(t)
+					err := l.Apply(context.Background(), c)
+					g.Expect(err).To(BeNil())
 
-			g.Expect(s.AddonRepositories).To(Equal(tc.expectRepos))
+					if !preInit {
+						g.Expect(s.AddonRepositories).To(Equal(tc.expectRepos))
+					} else {
+						g.Expect(s.AddonRepositories).To(BeEmpty())
+					}
+				})
+			}
 		})
 	}
 }
