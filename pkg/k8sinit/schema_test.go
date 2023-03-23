@@ -68,6 +68,10 @@ func TestParse(t *testing.T) {
 						"LIBRAFT_TRACE":   &[]string{"1"}[0],
 						"LIBDQLITE_TRACE": &[]string{"1"}[0],
 					},
+					AddonRepositories: []k8sinit.AddonRepositoryConfiguration{
+						{Name: "core", URL: "https://github.com/canonical/microk8s-core-addons"},
+						{Name: "community", URL: "/snap/microk8s/current/addons/community", Reference: "1.26"},
+					},
 				}},
 			},
 		},

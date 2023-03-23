@@ -42,6 +42,9 @@ func (s *launcherScope) applyPart(ctx context.Context, c *Configuration) error {
 	}
 
 	if !s.launcher.preInit {
+		if err := s.reconcileAddonRepositories(ctx, c.AddonRepositories); err != nil {
+			return fmt.Errorf("failed to reconcile addon repositories: %w", err)
+		}
 		if err := s.reconcileAddons(ctx, c.Addons); err != nil {
 			return fmt.Errorf("failed to reconcile addons: %w", err)
 		}
@@ -146,6 +149,18 @@ func (s *launcherScope) reconcileContainerdRegistryConfigs(configs map[string]st
 
 	if err := s.launcher.snap.UpdateContainerdRegistryConfigs(cfgs); err != nil {
 		return fmt.Errorf("failed to update containerd registry configs: %w", err)
+	}
+	return nil
+}
+
+func (s *launcherScope) reconcileAddonRepositories(ctx context.Context, repos []AddonRepositoryConfiguration) error {
+	if len(repos) == 0 {
+		return nil
+	}
+	for _, repo := range repos {
+		if err := s.launcher.snap.AddAddonsRepository(ctx, repo.Name, repo.URL, repo.Reference, true); err != nil {
+			return fmt.Errorf("failed to add repository %s: %w", repo.Name, err)
+		}
 	}
 	return nil
 }

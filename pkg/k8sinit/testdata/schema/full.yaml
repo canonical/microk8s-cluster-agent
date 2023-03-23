@@ -32,5 +32,11 @@ addons:
     args: [--default-pool-size, 20GB]
   - name: registry
     disable: true
+addonRepositories:
+  - name: core
+    url: https://github.com/canonical/microk8s-core-addons
+  - name: community
+    url: /snap/microk8s/current/addons/community
+    reference: 1.26
 containerdRegistryConfigs:
   docker.io: server = "http://my.proxy:5000"
