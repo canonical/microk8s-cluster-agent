@@ -1,7 +1,9 @@
 package snaputil
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
@@ -61,7 +63,7 @@ func UpdateServiceArguments(s snap.Snap, serviceName string, updateList []map[st
 	}
 
 	arguments, err := s.ReadServiceArguments(serviceName)
-	if err != nil {
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return false, fmt.Errorf("failed to read arguments of service %s: %w", serviceName, err)
 	}
 
