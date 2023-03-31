@@ -107,7 +107,9 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 
 	// Check node is not in cluster already.
 	a.dqliteMu.Lock()
-	dqliteCluster, err := snaputil.GetDqliteCluster(a.Snap)
+	dqliteCluster, err := snaputil.WaitForDqliteCluster(ctx, a.Snap, func(c snaputil.DqliteCluster) (bool, error) {
+		return len(c) >= 1, nil
+	})
 	if err != nil {
 		a.dqliteMu.Unlock()
 		return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster nodes: %w", err)
