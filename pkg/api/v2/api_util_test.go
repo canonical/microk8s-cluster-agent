@@ -56,7 +56,9 @@ func TestFindMatchingBindAddress(t *testing.T) {
 				return []net.Addr{
 					&utiltest.MockCIDR{CIDR: "127.0.0.1/8"},
 					&utiltest.MockCIDR{CIDR: "10.0.0.10/16"},
+					&utiltest.MockCIDR{CIDR: "10.10.0.10/16"},
 					&utiltest.MockCIDR{CIDR: "10.0.100.100/32"},
+					&utiltest.MockCIDR{CIDR: "192.168.100.100/32"},
 				}, nil
 			},
 		}
@@ -73,9 +75,15 @@ func TestFindMatchingBindAddress(t *testing.T) {
 
 			addr, err := a.findMatchingBindAddress("10.0.100.100:25000")
 			g.Expect(err).To(BeNil())
+			g.Expect(addr).To(Equal("10.0.0.10"))
+		})
 
-			// FIXME(neoaggelos): update after we implement proper handling for Virtual IPs
-			g.Expect(addr).To(Equal("10.0.100.100"))
+		t.Run("FallbackToVirtualIPIfSubnetNotFound", func(t *testing.T) {
+			g := NewWithT(t)
+
+			addr, err := a.findMatchingBindAddress("192.168.100.100:25000")
+			g.Expect(err).To(BeNil())
+			g.Expect(addr).To(Equal("192.168.100.100"))
 		})
 	})
 }
