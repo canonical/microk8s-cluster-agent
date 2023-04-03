@@ -43,6 +43,7 @@ lifecycle of a MicroK8s cluster.`,
 		apiv2 := &v2.API{
 			Snap:                    s,
 			LookupIP:                net.LookupIP,
+			InterfaceAddrs:          net.InterfaceAddrs,
 			ListControlPlaneNodeIPs: snaputil.ListControlPlaneNodeIPs,
 		}
 		srv := server.NewServer(time.Duration(timeout)*time.Second, enableMetrics, apiv1, apiv2)

@@ -123,10 +123,15 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 
 	// Update dqlite cluster if needed
 	if len(dqliteCluster) == 1 && strings.HasPrefix(dqliteCluster[0].Address, "127.0.0.1:") {
-		requestHost, _, _ := net.SplitHostPort(req.HostPort)
-		if err := snaputil.UpdateDqliteIP(ctx, a.Snap, requestHost); err != nil {
+		newDqliteBindAddress, err := a.findMatchingBindAddress(req.HostPort)
+		if err != nil {
 			a.dqliteMu.Unlock()
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update dqlite address to %q: %w", requestHost, err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to find matching dqlite bind address for %v: %w", req.HostPort, err)
+		}
+
+		if err := snaputil.UpdateDqliteIP(ctx, a.Snap, newDqliteBindAddress); err != nil {
+			a.dqliteMu.Unlock()
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update dqlite address to %q: %w", newDqliteBindAddress, err)
 		}
 
 		// Wait for dqlite cluster to come up with new address
