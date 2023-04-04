@@ -75,6 +75,8 @@ type JoinResponse struct {
 	// ControlPlaneNodes is a list of known control plane nodes running kube-apiserver.
 	// This is only included in the response when joining worker-only nodes.
 	ControlPlaneNodes []string `json:"control_plane_nodes"`
+	// ClusterCidr is the cidr that is used by the cluster, defined in kube-proxy args.
+	ClusterCidr string `json:"cluster_cidr,omitempty"`
 }
 
 // Join implements "POST v2/join".
@@ -170,6 +172,7 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 		APIServerAuthorizationMode: snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--authorization-mode"),
 		HostNameOverride:           remoteIP,
 		KubeletArgs:                kubeletArgs,
+		ClusterCidr:                snaputil.GetServiceArgument(a.Snap, "kube-proxy", "--cluster-cidr"),
 	}
 
 	if req.WorkerOnly {
