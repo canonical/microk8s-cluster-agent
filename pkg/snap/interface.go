@@ -103,4 +103,7 @@ type Snap interface {
 
 	// AddAddonsRepository configures an addons repository on the local node, similar to running the 'microk8s addons repo add' command.
 	AddAddonsRepository(ctx context.Context, name, url, reference string, force bool) error
+
+	// JoinCluster joins the local node to an existing MicroK8s cluster as a control-plane or worker node.
+	JoinCluster(ctx context.Context, url string, worker bool) error
 }

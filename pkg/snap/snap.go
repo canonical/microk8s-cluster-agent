@@ -396,4 +396,15 @@ func (s *snap) AddAddonsRepository(ctx context.Context, name, url, reference str
 	return nil
 }
 
+func (s *snap) JoinCluster(ctx context.Context, url string, worker bool) error {
+	cmd := []string{filepath.Join(s.snapPath("microk8s-join.wrapper")), url}
+	if worker {
+		cmd = append(cmd, "--worker")
+	}
+	if err := s.runCommand(ctx, cmd...); err != nil {
+		return fmt.Errorf("failed to execute microk8s join command: %w", err)
+	}
+	return nil
+}
+
 var _ Snap = &snap{}

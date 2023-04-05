@@ -17,6 +17,12 @@ type AddonRepository struct {
 	Force     bool
 }
 
+// JoinClusterCall is a mock for the join cluster call.
+type JoinClusterCall struct {
+	URL    string
+	Worker bool
+}
+
 // Snap is a generic mock for the snap.Snap interface.
 type Snap struct {
 	GroupName string
@@ -76,6 +82,8 @@ type Snap struct {
 	ContainerdRegistryConfigs map[string]string // map registry name to hosts.toml contents
 
 	AddonRepositories map[string]AddonRepository
+
+	JoinClusterCalledWith []JoinClusterCall
 }
 
 // GetGroupName is a mock implementation for the snap.Snap interface.
@@ -215,19 +223,12 @@ func contains(list []string, item string) bool {
 
 // ConsumeClusterToken is a mock implementation for the snap.Snap interface.
 func (s *Snap) ConsumeClusterToken(token string) bool {
-	if s.ConsumeClusterTokenCalledWith == nil {
-		s.ConsumeClusterTokenCalledWith = make([]string, 0, 1)
-	}
 	s.ConsumeClusterTokenCalledWith = append(s.ConsumeClusterTokenCalledWith, token)
 	return contains(s.ClusterTokens, token)
 }
 
 // ConsumeCertificateRequestToken is a mock implementation for the snap.Snap interface.
 func (s *Snap) ConsumeCertificateRequestToken(token string) bool {
-	if s.ConsumeCertificateRequestTokenCalledWith == nil {
-		s.ConsumeCertificateRequestTokenCalledWith = make([]string, 0, 1)
-	}
-
 	s.ConsumeCertificateRequestTokenCalledWith = append(s.ConsumeCertificateRequestTokenCalledWith, token)
 	return contains(s.CertificateRequestTokens, token)
 }
@@ -239,41 +240,19 @@ func (s *Snap) ConsumeSelfCallbackToken(token string) bool {
 
 // AddPersistentClusterToken is a mock implementation for the snap.Snap interface.
 func (s *Snap) AddPersistentClusterToken(token string) error {
-	if s.AddPersistentClusterTokenCalledWith == nil {
-		s.AddPersistentClusterTokenCalledWith = make([]string, 0, 1)
-	}
-
 	s.AddPersistentClusterTokenCalledWith = append(s.AddPersistentClusterTokenCalledWith, token)
 	return nil
 }
 
 // AddCertificateRequestToken is a mock implementation for the snap.Snap interface.
 func (s *Snap) AddCertificateRequestToken(token string) error {
-	if s.AddCertificateRequestTokenCalledWith == nil {
-		s.AddCertificateRequestTokenCalledWith = make([]string, 0, 1)
-	}
-
 	s.AddCertificateRequestTokenCalledWith = append(s.AddCertificateRequestTokenCalledWith, token)
 	return nil
 }
 
 // AddCallbackToken is a mock implementation for the snap.Snap interface.
 func (s *Snap) AddCallbackToken(clusterAgentEndpoint string, token string) error {
-	if s.AddCallbackTokenCalledWith == nil {
-		s.AddCallbackTokenCalledWith = make([]string, 0, 1)
-	}
-
 	s.AddCallbackTokenCalledWith = append(s.AddCallbackTokenCalledWith, fmt.Sprintf("%s %s", clusterAgentEndpoint, token))
-	return nil
-}
-
-// RemoveClusterToken is a mock implementation for the snap.Snap interface.
-func (s *Snap) RemoveClusterToken(token string) error {
-	if s.ConsumeClusterTokenCalledWith == nil {
-		s.ConsumeClusterTokenCalledWith = make([]string, 0, 1)
-	}
-
-	s.ConsumeClusterTokenCalledWith = append(s.ConsumeClusterTokenCalledWith, token)
 	return nil
 }
 
@@ -307,27 +286,18 @@ func (s *Snap) GetKnownToken(username string) (string, error) {
 
 // RunUpgrade is a mock implementation for the snap.Snap interface.
 func (s *Snap) RunUpgrade(ctx context.Context, upgrade string, phase string) error {
-	if s.RunUpgradeCalledWith == nil {
-		s.RunUpgradeCalledWith = make([]string, 0, 1)
-	}
 	s.RunUpgradeCalledWith = append(s.RunUpgradeCalledWith, fmt.Sprintf("%s %s", upgrade, phase))
 	return nil
 }
 
 // SignCertificate is a mock implementation for the snap.Snap interface.
 func (s *Snap) SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, error) {
-	if s.SignCertificateCalledWith == nil {
-		s.SignCertificateCalledWith = make([]string, 0, 1)
-	}
 	s.SignCertificateCalledWith = append(s.SignCertificateCalledWith, string(csrPEM))
 	return []byte(s.SignedCertificate), nil
 }
 
 // ImportImage is a mock implementation for the snap.Snap interface.
 func (s *Snap) ImportImage(ctx context.Context, reader io.Reader) error {
-	if s.ImportImageCalledWith == nil {
-		s.ImportImageCalledWith = make([]string, 0, 1)
-	}
 	b, _ := io.ReadAll(reader)
 	s.ImportImageCalledWith = append(s.ImportImageCalledWith, string(b))
 	return nil
@@ -361,6 +331,12 @@ func (s *Snap) AddAddonsRepository(ctx context.Context, name, url, reference str
 		Reference: reference,
 		Force:     force,
 	}
+	return nil
+}
+
+// JoinCluster is a mock implementation for the snap.Snap interface.
+func (s *Snap) JoinCluster(ctx context.Context, url string, worker bool) error {
+	s.JoinClusterCalledWith = append(s.JoinClusterCalledWith, JoinClusterCall{url, worker})
 	return nil
 }
 
