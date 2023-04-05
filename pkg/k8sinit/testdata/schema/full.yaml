@@ -26,6 +26,9 @@ extraDqliteArgs:
 extraDqliteEnv:
   LIBRAFT_TRACE: "1"
   LIBDQLITE_TRACE: "1"
+extraConfigFiles:
+  flannel-network-mgr-config: |
+    {"Network": "10.1.0.0/16", "Backend": {"Type": "vxlan"}}
 addons:
   - name: dns
   - name: mayastor

@@ -136,6 +136,10 @@ type Configuration struct {
 	// ExtraFlanneldEnv is extra environment variables (e.g. GOFIPS) for the local node flanneld.
 	// Set a value to null to remove it from the environment.
 	ExtraFlanneldEnv map[string]*string `yaml:"extraFlanneldEnv"`
+
+	// ExtraConfigFiles is extra service configuration files to create (e.g. for configuring kube-apiserver encryption at rest).
+	// These files will be written at $SNAP_DATA/args/<filename>.
+	ExtraConfigFiles map[string]string `yaml:"extraConfigFiles"`
 }
 
 // ParseConfiguration tries to parse a Configuration object from YAML data.
@@ -246,6 +250,8 @@ func (c *Configuration) isZero() bool {
 	case len(c.ExtraFlanneldArgs) > 0:
 		return false
 	case len(c.ExtraFlanneldEnv) > 0:
+		return false
+	case len(c.ExtraConfigFiles) > 0:
 		return false
 	}
 	return true

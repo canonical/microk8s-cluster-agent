@@ -3,6 +3,7 @@ package k8sinit
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
@@ -47,6 +48,15 @@ func (s *launcherScope) applyPart(ctx context.Context, c *Configuration) error {
 		}
 		if err := s.reconcileAddons(ctx, c.Addons); err != nil {
 			return fmt.Errorf("failed to reconcile addons: %w", err)
+		}
+	}
+
+	for file, contents := range c.ExtraConfigFiles {
+		if strings.Contains("/", file) {
+			return fmt.Errorf("file name %q must not contain any slashes (possible path-traversal prevented)", file)
+		}
+		if err := s.launcher.snap.WriteServiceArguments(file, []byte(contents)); err != nil {
+			return fmt.Errorf("failed to create extra config file %q: %w", file, err)
 		}
 	}
 

@@ -317,6 +317,17 @@ func TestComponentConfiguration(t *testing.T) {
 			},
 			expectServiceRestart: []string{"flanneld"},
 		},
+		{
+			name: "extra-config-files",
+			setConfig: func(c *Configuration) {
+				c.ExtraConfigFiles = map[string]string{
+					"flannel-network-mgr-config": `{"Network": "10.1.0.0/16", "Backend": {"Type": "vxlan"}}`,
+				}
+			},
+			expectServiceArgs: map[string][]string{
+				"flannel-network-mgr-config": {`{"Network": "10.1.0.0/16", "Backend": {"Type": "vxlan"}}`},
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, preInit := range []bool{false, true} {

@@ -72,6 +72,9 @@ func TestParse(t *testing.T) {
 						{Name: "core", URL: "https://github.com/canonical/microk8s-core-addons"},
 						{Name: "community", URL: "/snap/microk8s/current/addons/community", Reference: "1.26"},
 					},
+					ExtraConfigFiles: map[string]string{
+						"flannel-network-mgr-config": `{"Network": "10.1.0.0/16", "Backend": {"Type": "vxlan"}}` + "\n",
+					},
 				}},
 			},
 		},
