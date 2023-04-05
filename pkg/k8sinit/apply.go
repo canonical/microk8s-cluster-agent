@@ -105,6 +105,14 @@ func (s *launcherScope) applyPart(ctx context.Context, c *Configuration) error {
 		return fmt.Errorf("failed to reconcile containerd registry configs: %w", err)
 	}
 
+	if !s.launcher.preInit {
+		if j := c.Join; j.URL != "" {
+			if err := s.launcher.snap.JoinCluster(ctx, j.URL, j.Worker); err != nil {
+				return fmt.Errorf("failed to join cluster: %w", err)
+			}
+		}
+	}
+
 	return nil
 }
 

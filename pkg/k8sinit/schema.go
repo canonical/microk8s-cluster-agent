@@ -21,6 +21,15 @@ var (
 	errEmptyConfig = fmt.Errorf("empty configuration object")
 )
 
+// JoinConfiguration is configuration to join the local node to an existing MicroK8s cluster.
+type JoinConfiguration struct {
+	// URL is the URL passed to the microk8s join command.
+	URL string `yaml:"url"`
+
+	// Worker is true when joining the cluster as a worker-only node.
+	Worker bool `yaml:"worker"`
+}
+
 // AddonConfiguration specifies an addon to be enabled or disabled.
 type AddonConfiguration struct {
 	// Name of the addon to configure.
@@ -143,6 +152,9 @@ type Configuration struct {
 
 	// PersistentClusterToken is a token that may be used to authentication join requests to the local node.
 	PersistentClusterToken string `yaml:"persistentClusterToken"`
+
+	// Join configuration. Setting this will attempt to join the local node to an already existing MicroK8s cluster.
+	Join JoinConfiguration `yaml:"join"`
 }
 
 // ParseConfiguration tries to parse a Configuration object from YAML data.
@@ -211,6 +223,10 @@ func (c *Configuration) isZero() bool {
 	case c.Version != "":
 		return false
 	case c.PersistentClusterToken != "":
+		return false
+	case c.Join.URL != "":
+		return false
+	case c.Join.Worker:
 		return false
 	case len(c.AddonRepositories) > 0:
 		return false

@@ -76,6 +76,10 @@ func TestParse(t *testing.T) {
 						"flannel-network-mgr-config": `{"Network": "10.1.0.0/16", "Backend": {"Type": "vxlan"}}` + "\n",
 					},
 					PersistentClusterToken: "my-token",
+					Join: k8sinit.JoinConfiguration{
+						URL:    "10.0.0.10:25000/my-token/hash",
+						Worker: true,
+					},
 				}},
 			},
 		},

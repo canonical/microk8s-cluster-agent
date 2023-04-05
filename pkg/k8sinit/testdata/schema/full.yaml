@@ -44,3 +44,6 @@ addonRepositories:
     reference: 1.26
 containerdRegistryConfigs:
   docker.io: server = "http://my.proxy:5000"
+join:
+  url: 10.0.0.10:25000/my-token/hash
+  worker: true
