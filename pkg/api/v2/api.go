@@ -19,6 +19,9 @@ type API struct {
 	// LookupIP is net.LookupIP.
 	LookupIP func(string) ([]net.IP, error)
 
+	// InterfaceAddrs is net.InterfaceAddrs.
+	InterfaceAddrs func() ([]net.Addr, error)
+
 	// dqliteMu protects changes involving the dqlite service.
 	dqliteMu sync.Mutex
 
