@@ -10,6 +10,7 @@ import (
 
 	v2 "github.com/canonical/microk8s-cluster-agent/pkg/api/v2"
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap/mock"
+	utiltest "github.com/canonical/microk8s-cluster-agent/pkg/util/test"
 )
 
 // TestJoin tests responses when joining control plane and worker nodes in an existing cluster.
@@ -56,6 +57,12 @@ Role: 0
 				"test-control-plane": {{10, 10, 10, 13}},
 				"test-worker":        {{10, 10, 10, 12}},
 			}[hostname], nil
+		},
+		InterfaceAddrs: func() ([]net.Addr, error) {
+			return []net.Addr{
+				&utiltest.MockCIDR{CIDR: "127.0.0.1/8"},
+				&utiltest.MockCIDR{CIDR: "10.0.0.10/16"},
+			}, nil
 		},
 		ListControlPlaneNodeIPs: mockListControlPlaneNodes("10.0.0.1", "10.0.0.2"),
 	}
@@ -203,6 +210,12 @@ Role: 0
 		Snap: s,
 		LookupIP: func(hostname string) ([]net.IP, error) {
 			return []net.IP{{10, 10, 10, 13}}, nil
+		},
+		InterfaceAddrs: func() ([]net.Addr, error) {
+			return []net.Addr{
+				&utiltest.MockCIDR{CIDR: "127.0.0.1/8"},
+				&utiltest.MockCIDR{CIDR: "10.10.10.10/16"},
+			}, nil
 		},
 	}
 
