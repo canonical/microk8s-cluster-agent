@@ -140,6 +140,9 @@ type Configuration struct {
 	// ExtraConfigFiles is extra service configuration files to create (e.g. for configuring kube-apiserver encryption at rest).
 	// These files will be written at $SNAP_DATA/args/<filename>.
 	ExtraConfigFiles map[string]string `yaml:"extraConfigFiles"`
+
+	// PersistentClusterToken is a token that may be used to authentication join requests to the local node.
+	PersistentClusterToken string `yaml:"persistentClusterToken"`
 }
 
 // ParseConfiguration tries to parse a Configuration object from YAML data.
@@ -206,6 +209,8 @@ func ParseMultiPartConfiguration(b []byte) (MultiPartConfiguration, error) {
 func (c *Configuration) isZero() bool {
 	switch {
 	case c.Version != "":
+		return false
+	case c.PersistentClusterToken != "":
 		return false
 	case len(c.AddonRepositories) > 0:
 		return false

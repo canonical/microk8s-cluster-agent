@@ -51,6 +51,12 @@ func (s *launcherScope) applyPart(ctx context.Context, c *Configuration) error {
 		}
 	}
 
+	if v := c.PersistentClusterToken; v != "" {
+		if err := s.launcher.snap.AddPersistentClusterToken(v); err != nil {
+			return fmt.Errorf("failed to configure persistent token: %w", err)
+		}
+	}
+
 	for file, contents := range c.ExtraConfigFiles {
 		if strings.Contains("/", file) {
 			return fmt.Errorf("file name %q must not contain any slashes (possible path-traversal prevented)", file)

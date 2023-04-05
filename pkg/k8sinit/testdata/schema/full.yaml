@@ -1,5 +1,6 @@
 ---
 version: 0.1.0
+persistentClusterToken: my-token
 extraSANs:
   - 10.10.10.10
   - microk8s.example.com

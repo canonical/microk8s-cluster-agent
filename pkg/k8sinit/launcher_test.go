@@ -363,3 +363,31 @@ func TestComponentConfiguration(t *testing.T) {
 		})
 	}
 }
+
+func TestPersistentClusterToken(t *testing.T) {
+	for _, withToken := range []bool{false, true} {
+		t.Run(fmt.Sprintf("withToken=%v", withToken), func(t *testing.T) {
+			for _, preInit := range []bool{false, true} {
+				t.Run(fmt.Sprintf("preInit=%v", preInit), func(t *testing.T) {
+					s := &mock.Snap{}
+
+					l := NewLauncher(s, preInit)
+					c := MultiPartConfiguration{[]*Configuration{
+						{Version: minimumConfigFileVersionRequired.String()},
+					}}
+					if withToken {
+						c.Parts[0].PersistentClusterToken = "my-token"
+					}
+					g := NewWithT(t)
+					err := l.Apply(context.Background(), c)
+					g.Expect(err).To(BeNil())
+					if withToken {
+						g.Expect(s.AddPersistentClusterTokenCalledWith).To(ConsistOf("my-token"))
+					} else {
+						g.Expect(s.AddPersistentClusterTokenCalledWith).To(BeEmpty())
+					}
+				})
+			}
+		})
+	}
+}

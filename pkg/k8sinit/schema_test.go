@@ -75,6 +75,7 @@ func TestParse(t *testing.T) {
 					ExtraConfigFiles: map[string]string{
 						"flannel-network-mgr-config": `{"Network": "10.1.0.0/16", "Backend": {"Type": "vxlan"}}` + "\n",
 					},
+					PersistentClusterToken: "my-token",
 				}},
 			},
 		},
