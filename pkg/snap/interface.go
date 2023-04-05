@@ -72,6 +72,8 @@ type Snap interface {
 	// Self callback tokens may be consumed multiple times.
 	ConsumeSelfCallbackToken(token string) bool
 
+	// AddPersistentClusterToken adds a new persistent token that can be used to authenticate join requests.
+	AddPersistentClusterToken(token string) error
 	// AddCertificateRequestToken adds a new token that can be used to authenticate certificate signing requests.
 	AddCertificateRequestToken(token string) error
 	// AddCallbackToken adds a new token that can be used to authenticate requests to a remote cluster agent endpoint.

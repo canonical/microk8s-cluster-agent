@@ -221,6 +221,9 @@ func (s *snap) WriteServiceArguments(serviceName string, arguments []byte) error
 func (s *snap) ConsumeClusterToken(token string) bool {
 	s.clusterTokensMu.Lock()
 	defer s.clusterTokensMu.Unlock()
+	if isValid, _ := util.IsValidToken(token, s.snapDataPath("credentials", "persistent-cluster-tokens.txt")); isValid {
+		return true
+	}
 	clusterTokensFile := s.snapDataPath("credentials", "cluster-tokens.txt")
 	isValid, hasTTL := util.IsValidToken(token, clusterTokensFile)
 	if isValid && !hasTTL {
@@ -247,6 +250,12 @@ func (s *snap) ConsumeCertificateRequestToken(token string) bool {
 func (s *snap) ConsumeSelfCallbackToken(token string) bool {
 	valid, _ := util.IsValidToken(token, s.snapDataPath("credentials", "callback-token.txt"))
 	return valid
+}
+
+func (s *snap) AddPersistentClusterToken(token string) error {
+	s.certTokensMu.Lock()
+	defer s.certTokensMu.Unlock()
+	return util.AppendToken(token, s.snapDataPath("credentials", "persistent-cluster-tokens.txt"), s.GetGroupName())
 }
 
 func (s *snap) AddCertificateRequestToken(token string) error {

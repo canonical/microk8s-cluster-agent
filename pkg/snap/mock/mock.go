@@ -55,6 +55,7 @@ type Snap struct {
 	CertificateRequestTokens []string
 	SelfCallbackTokens       []string
 
+	AddPersistentClusterTokenCalledWith  []string
 	AddCertificateRequestTokenCalledWith []string
 	AddCallbackTokenCalledWith           []string // "{clusterAgentEndpoint} {token}"
 
@@ -234,6 +235,16 @@ func (s *Snap) ConsumeCertificateRequestToken(token string) bool {
 // ConsumeSelfCallbackToken is a mock implementation for the snap.Snap interface.
 func (s *Snap) ConsumeSelfCallbackToken(token string) bool {
 	return contains(s.SelfCallbackTokens, token)
+}
+
+// AddPersistentClusterToken is a mock implementation for the snap.Snap interface.
+func (s *Snap) AddPersistentClusterToken(token string) error {
+	if s.AddPersistentClusterTokenCalledWith == nil {
+		s.AddPersistentClusterTokenCalledWith = make([]string, 0, 1)
+	}
+
+	s.AddPersistentClusterTokenCalledWith = append(s.AddPersistentClusterTokenCalledWith, token)
+	return nil
 }
 
 // AddCertificateRequestToken is a mock implementation for the snap.Snap interface.
