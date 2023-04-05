@@ -40,6 +40,7 @@ Role: 0
 		ServiceArguments: map[string]string{
 			"kubelet":        "kubelet arguments\n",
 			"kube-apiserver": "--secure-port 16443\n--authorization-mode=Node,RBAC",
+			"kube-proxy":     "--cluster-cidr 10.1.0.0./16",
 			"cluster-agent":  "--bind=0.0.0.0:25000",
 		},
 		ClusterTokens:     []string{"worker-token", "control-plane-token"},
@@ -102,6 +103,7 @@ Role: 0
 			AdminToken:                 "admin-token-123",
 			DqliteClusterCertificate:   "DQLITE CERTIFICATE DATA",
 			DqliteClusterKey:           "DQLITE KEY DATA",
+			ClusterCIDR:                "10.1.0.0./16",
 		}
 		if !reflect.DeepEqual(*resp, *expectedResponse) {
 			t.Fatalf("Expected response %#v, but received %#v instead", expectedResponse, resp)
@@ -146,6 +148,7 @@ Role: 0
 			KubeletArgs:                "kubelet arguments\n",
 			HostNameOverride:           "10.10.10.12",
 			ControlPlaneNodes:          []string{"10.0.0.1", "10.0.0.2"},
+			ClusterCIDR:                "10.1.0.0./16",
 		}
 
 		if !reflect.DeepEqual(*resp, *expectedResponse) {
@@ -190,6 +193,7 @@ Role: 0
 		ServiceArguments: map[string]string{
 			"kubelet":        "kubelet arguments\n",
 			"kube-apiserver": "--secure-port 16443\n--authorization-mode=Node",
+			"kube-proxy":     "--cluster-cidr 10.1.0.0./16",
 			"cluster-agent":  "--bind=0.0.0.0:25000",
 		},
 		ClusterTokens:     []string{"control-plane-token"},
@@ -243,6 +247,7 @@ Role: 0
 		AdminToken:                 "admin-token-123",
 		DqliteClusterCertificate:   "DQLITE CERTIFICATE DATA",
 		DqliteClusterKey:           "DQLITE KEY DATA",
+		ClusterCIDR:                "10.1.0.0./16",
 	}
 	if !reflect.DeepEqual(*resp, *expectedResponse) {
 		t.Fatalf("Expected response %#v, but received %#v instead", expectedResponse, resp)

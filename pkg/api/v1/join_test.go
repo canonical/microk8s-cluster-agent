@@ -16,6 +16,7 @@ func TestJoin(t *testing.T) {
 		ServiceArguments: map[string]string{
 			"etcd":           "--listen-client-urls=https://0.0.0.0:12379",
 			"kube-apiserver": "--secure-port 16443",
+			"kube-proxy":     "--cluster-cidr 10.1.0.0./16",
 			"kubelet":        "kubelet arguments\n",
 		},
 		ClusterTokens: []string{"valid-cluster-token", "valid-other-token"},
@@ -81,6 +82,7 @@ func TestJoin(t *testing.T) {
 			KubeletArgs:          "kubelet arguments\n\n--hostname-override=10.10.10.10",
 			KubeletToken:         resp.KubeletToken,
 			HostNameOverride:     "10.10.10.10",
+			ClusterCIDR:          "10.1.0.0./16",
 		}
 		if *resp != *expectedResponse {
 			t.Fatalf("Expected response %#v, but it was %#v", expectedResponse, resp)

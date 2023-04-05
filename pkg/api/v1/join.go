@@ -40,6 +40,8 @@ type JoinResponse struct {
 	KubeletArgs string `json:"kubelet_args"`
 	// HostNameOverride is the host name the joining node will be known as in the MicroK8s cluster.
 	HostNameOverride string `json:"hostname_override"`
+	// ClusterCIDR is the cidr that is used by the cluster, defined in kube-proxy args.
+	ClusterCIDR string `json:"cluster_cidr,omitempty"`
 }
 
 // Join implements "POST /CLUSTER_API_V1/join".
@@ -95,5 +97,6 @@ func (a *API) Join(ctx context.Context, request JoinRequest) (*JoinResponse, err
 		KubeletToken:         kubeletToken,
 		KubeletArgs:          kubeletArgs,
 		HostNameOverride:     hostname,
+		ClusterCIDR:          snaputil.GetServiceArgument(a.Snap, "kube-proxy", "--cluster-cidr"),
 	}, nil
 }
