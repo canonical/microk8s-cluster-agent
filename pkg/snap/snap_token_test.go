@@ -31,10 +31,17 @@ token-expired|%d
 token-not-expired|%d
 `, now-300, now+300)
 
+	persistentClusterTokens := `
+persistent-token
+persistent-token-2
+`
+
 	if err := os.WriteFile("testdata/credentials/cluster-tokens.txt", []byte(clusterTokens), 0600); err != nil {
 		t.Fatalf("Failed to create test cluster-tokens.txt file: %s", err)
 	}
-
+	if err := os.WriteFile("testdata/credentials/persistent-cluster-tokens.txt", []byte(persistentClusterTokens), 0600); err != nil {
+		t.Fatalf("Failed to create test persistent-cluster-tokens.txt file: %s", err)
+	}
 	for _, tc := range []struct {
 		token         string
 		expectedValid bool
@@ -61,6 +68,14 @@ token-not-expired|%d
 
 		// tokens with '|' are invalid
 		{token: "token-invalid-timestamp|-10a", expectedValid: false},
+
+		// persistent tokens can be reused
+		{token: "persistent-token", expectedValid: true},
+		{token: "persistent-token", expectedValid: true},
+		{token: "persistent-token", expectedValid: true},
+		{token: "persistent-token-2", expectedValid: true},
+		{token: "persistent-token-2", expectedValid: true},
+		{token: "persistent-token-2", expectedValid: true},
 	} {
 		t.Run(tc.token, func(t *testing.T) {
 			if s.ConsumeClusterToken(tc.token) != tc.expectedValid {
@@ -71,6 +86,29 @@ token-not-expired|%d
 				}
 			}
 		})
+	}
+}
+
+func TestPersistentClusterToken(t *testing.T) {
+	if err := os.MkdirAll("testdata/credentials", 0755); err != nil {
+		t.Fatalf("Failed to create test directory: %s", err)
+	}
+	defer os.RemoveAll("testdata/credentials")
+	s := snap.NewSnap("testdata", "testdata")
+	if err := s.AddPersistentClusterToken("my-token"); err != nil {
+		t.Fatalf("Failed to add persistent cluster token: %s", err)
+	}
+	contents, err := util.ReadFile("testdata/credentials/persistent-cluster-tokens.txt")
+	if err != nil {
+		t.Fatalf("Failed to retrieve tokens: %s", err)
+	}
+	if !strings.Contains(contents, "my-token\n") {
+		t.Fatal("Expected my-token to exist in tokens file, but it did not")
+	}
+	for i := 0; i < 100; i++ {
+		if !s.ConsumeClusterToken("my-token") {
+			t.Fatal("Expected my-token to be a valid persistent join token, but it is not")
+		}
 	}
 }
 

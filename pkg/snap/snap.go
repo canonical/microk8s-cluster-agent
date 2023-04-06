@@ -221,6 +221,9 @@ func (s *snap) WriteServiceArguments(serviceName string, arguments []byte) error
 func (s *snap) ConsumeClusterToken(token string) bool {
 	s.clusterTokensMu.Lock()
 	defer s.clusterTokensMu.Unlock()
+	if isValid, _ := util.IsValidToken(token, s.snapDataPath("credentials", "persistent-cluster-tokens.txt")); isValid {
+		return true
+	}
 	clusterTokensFile := s.snapDataPath("credentials", "cluster-tokens.txt")
 	isValid, hasTTL := util.IsValidToken(token, clusterTokensFile)
 	if isValid && !hasTTL {
@@ -247,6 +250,12 @@ func (s *snap) ConsumeCertificateRequestToken(token string) bool {
 func (s *snap) ConsumeSelfCallbackToken(token string) bool {
 	valid, _ := util.IsValidToken(token, s.snapDataPath("credentials", "callback-token.txt"))
 	return valid
+}
+
+func (s *snap) AddPersistentClusterToken(token string) error {
+	s.certTokensMu.Lock()
+	defer s.certTokensMu.Unlock()
+	return util.AppendToken(token, s.snapDataPath("credentials", "persistent-cluster-tokens.txt"), s.GetGroupName())
 }
 
 func (s *snap) AddCertificateRequestToken(token string) error {
@@ -383,6 +392,17 @@ func (s *snap) AddAddonsRepository(ctx context.Context, name, url, reference str
 	}
 	if err := s.runCommand(ctx, cmd...); err != nil {
 		return fmt.Errorf("failed to execute addons repo add command: %w", err)
+	}
+	return nil
+}
+
+func (s *snap) JoinCluster(ctx context.Context, url string, worker bool) error {
+	cmd := []string{filepath.Join(s.snapPath("microk8s-join.wrapper")), url}
+	if worker {
+		cmd = append(cmd, "--worker")
+	}
+	if err := s.runCommand(ctx, cmd...); err != nil {
+		return fmt.Errorf("failed to execute microk8s join command: %w", err)
 	}
 	return nil
 }

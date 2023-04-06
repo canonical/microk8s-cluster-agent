@@ -72,6 +72,8 @@ type Snap interface {
 	// Self callback tokens may be consumed multiple times.
 	ConsumeSelfCallbackToken(token string) bool
 
+	// AddPersistentClusterToken adds a new persistent token that can be used to authenticate join requests.
+	AddPersistentClusterToken(token string) error
 	// AddCertificateRequestToken adds a new token that can be used to authenticate certificate signing requests.
 	AddCertificateRequestToken(token string) error
 	// AddCallbackToken adds a new token that can be used to authenticate requests to a remote cluster agent endpoint.
@@ -101,4 +103,7 @@ type Snap interface {
 
 	// AddAddonsRepository configures an addons repository on the local node, similar to running the 'microk8s addons repo add' command.
 	AddAddonsRepository(ctx context.Context, name, url, reference string, force bool) error
+
+	// JoinCluster joins the local node to an existing MicroK8s cluster as a control-plane or worker node.
+	JoinCluster(ctx context.Context, url string, worker bool) error
 }

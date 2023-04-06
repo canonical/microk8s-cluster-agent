@@ -317,6 +317,17 @@ func TestComponentConfiguration(t *testing.T) {
 			},
 			expectServiceRestart: []string{"flanneld"},
 		},
+		{
+			name: "extra-config-files",
+			setConfig: func(c *Configuration) {
+				c.ExtraConfigFiles = map[string]string{
+					"flannel-network-mgr-config": `{"Network": "10.1.0.0/16", "Backend": {"Type": "vxlan"}}`,
+				}
+			},
+			expectServiceArgs: map[string][]string{
+				"flannel-network-mgr-config": {`{"Network": "10.1.0.0/16", "Backend": {"Type": "vxlan"}}`},
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, preInit := range []bool{false, true} {
@@ -346,6 +357,64 @@ func TestComponentConfiguration(t *testing.T) {
 						g.Expect(s.RestartServiceCalledWith).To(BeEmpty())
 					} else {
 						g.Expect(s.RestartServiceCalledWith).To(ConsistOf(tc.expectServiceRestart))
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestPersistentClusterToken(t *testing.T) {
+	for _, withToken := range []bool{false, true} {
+		t.Run(fmt.Sprintf("withToken=%v", withToken), func(t *testing.T) {
+			for _, preInit := range []bool{false, true} {
+				t.Run(fmt.Sprintf("preInit=%v", preInit), func(t *testing.T) {
+					s := &mock.Snap{}
+
+					l := NewLauncher(s, preInit)
+					c := MultiPartConfiguration{[]*Configuration{
+						{Version: minimumConfigFileVersionRequired.String()},
+					}}
+					if withToken {
+						c.Parts[0].PersistentClusterToken = "my-token"
+					}
+					g := NewWithT(t)
+					err := l.Apply(context.Background(), c)
+					g.Expect(err).To(BeNil())
+					if withToken {
+						g.Expect(s.AddPersistentClusterTokenCalledWith).To(ConsistOf("my-token"))
+					} else {
+						g.Expect(s.AddPersistentClusterTokenCalledWith).To(BeEmpty())
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestJoinCluster(t *testing.T) {
+	for _, worker := range []bool{false, true} {
+		t.Run(fmt.Sprintf("worker=%v", worker), func(t *testing.T) {
+			for _, preInit := range []bool{false, true} {
+				t.Run(fmt.Sprintf("preInit=%v", preInit), func(t *testing.T) {
+					s := &mock.Snap{}
+
+					l := NewLauncher(s, preInit)
+					c := MultiPartConfiguration{[]*Configuration{{
+						Version: minimumConfigFileVersionRequired.String(),
+						Join:    JoinConfiguration{URL: "10.10.10.10:25000/token/hash", Worker: worker},
+					}}}
+
+					g := NewWithT(t)
+					err := l.Apply(context.Background(), c)
+					g.Expect(err).To(BeNil())
+					if !preInit {
+						g.Expect(s.JoinClusterCalledWith).To(ConsistOf(mock.JoinClusterCall{
+							URL:    "10.10.10.10:25000/token/hash",
+							Worker: worker,
+						}))
+					} else {
+						g.Expect(s.JoinClusterCalledWith).To(BeEmpty())
 					}
 				})
 			}

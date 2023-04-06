@@ -21,6 +21,15 @@ var (
 	errEmptyConfig = fmt.Errorf("empty configuration object")
 )
 
+// JoinConfiguration is configuration to join the local node to an existing MicroK8s cluster.
+type JoinConfiguration struct {
+	// URL is the URL passed to the microk8s join command.
+	URL string `yaml:"url"`
+
+	// Worker is true when joining the cluster as a worker-only node.
+	Worker bool `yaml:"worker"`
+}
+
 // AddonConfiguration specifies an addon to be enabled or disabled.
 type AddonConfiguration struct {
 	// Name of the addon to configure.
@@ -136,6 +145,16 @@ type Configuration struct {
 	// ExtraFlanneldEnv is extra environment variables (e.g. GOFIPS) for the local node flanneld.
 	// Set a value to null to remove it from the environment.
 	ExtraFlanneldEnv map[string]*string `yaml:"extraFlanneldEnv"`
+
+	// ExtraConfigFiles is extra service configuration files to create (e.g. for configuring kube-apiserver encryption at rest).
+	// These files will be written at $SNAP_DATA/args/<filename>.
+	ExtraConfigFiles map[string]string `yaml:"extraConfigFiles"`
+
+	// PersistentClusterToken is a token that may be used to authentication join requests to the local node.
+	PersistentClusterToken string `yaml:"persistentClusterToken"`
+
+	// Join configuration. Setting this will attempt to join the local node to an already existing MicroK8s cluster.
+	Join JoinConfiguration `yaml:"join"`
 }
 
 // ParseConfiguration tries to parse a Configuration object from YAML data.
@@ -203,6 +222,12 @@ func (c *Configuration) isZero() bool {
 	switch {
 	case c.Version != "":
 		return false
+	case c.PersistentClusterToken != "":
+		return false
+	case c.Join.URL != "":
+		return false
+	case c.Join.Worker:
+		return false
 	case len(c.AddonRepositories) > 0:
 		return false
 	case len(c.Addons) > 0:
@@ -246,6 +271,8 @@ func (c *Configuration) isZero() bool {
 	case len(c.ExtraFlanneldArgs) > 0:
 		return false
 	case len(c.ExtraFlanneldEnv) > 0:
+		return false
+	case len(c.ExtraConfigFiles) > 0:
 		return false
 	}
 	return true
