@@ -12,8 +12,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// NewServer creates a new *http.ServeMux and registers the MicroK8s cluster agent API endpoints.
-func NewServer(timeout time.Duration, enableMetrics bool, apiv1 *v1.API, apiv2 *v2.API) *http.ServeMux {
+// NewServeMux creates a new *http.ServeMux and registers the MicroK8s cluster agent API endpoints.
+func NewServeMux(timeout time.Duration, enableMetrics bool, apiv1 *v1.API, apiv2 *v2.API) *http.ServeMux {
 	server := http.NewServeMux()
 
 	withMiddleware := func(f http.HandlerFunc) http.HandlerFunc {
