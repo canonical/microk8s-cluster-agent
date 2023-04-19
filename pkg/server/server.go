@@ -12,8 +12,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// NewServer creates a new *http.ServeMux and registers the MicroK8s cluster agent API endpoints.
-func NewServer(timeout time.Duration, enableMetrics bool, apiv1 *v1.API, apiv2 *v2.API) *http.ServeMux {
+// NewServeMux creates a new *http.ServeMux and registers the MicroK8s cluster agent API endpoints.
+func NewServeMux(timeout time.Duration, enableMetrics bool, apiv1 *v1.API, apiv2 *v2.API) *http.ServeMux {
 	server := http.NewServeMux()
 
 	withMiddleware := func(f http.HandlerFunc) http.HandlerFunc {
@@ -24,6 +24,16 @@ func NewServer(timeout time.Duration, enableMetrics bool, apiv1 *v1.API, apiv2 *
 	// Default handler
 	server.HandleFunc("/", withMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		httputil.Error(w, http.StatusNotFound, fmt.Errorf("not found"))
+	}))
+
+	// GET /health
+	server.HandleFunc("/health", withMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		httputil.Response(w, map[string]string{"status": "OK"})
 	}))
 
 	// Prometheus metrics

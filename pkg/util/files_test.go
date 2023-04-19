@@ -40,3 +40,30 @@ func TestReadFile(t *testing.T) {
 	}
 	os.Remove("testdata/test-read-file")
 }
+
+func TestParseArgumentLine(t *testing.T) {
+	for _, tc := range []struct {
+		line, key, value string
+	}{
+		{line: "--key=value", key: "--key", value: "value"},
+		{line: "--key=value   ", key: "--key", value: "value"},
+		{line: "--key value", key: "--key", value: "value"},
+		{line: "--key value     ", key: "--key", value: "value"},
+		{line: "--key value value", key: "--key", value: "value value"},
+		{line: "--key=value value", key: "--key", value: "value value"},
+		{line: "--key", key: "--key", value: ""},
+		{line: "--key    ", key: "--key", value: ""},
+		{line: "--key=", key: "--key", value: ""},
+		{line: "--key=    ", key: "--key", value: ""},
+	} {
+		t.Run(tc.line, func(t *testing.T) {
+			key, value := util.ParseArgumentLine(tc.line)
+			if key != tc.key {
+				t.Fatalf("Expected key to be %q but it was %q instead", tc.key, key)
+			}
+			if value != tc.value {
+				t.Fatalf("Expected value to be %q but it was %q instead", tc.value, value)
+			}
+		})
+	}
+}

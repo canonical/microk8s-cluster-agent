@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
@@ -305,7 +304,7 @@ func (s *Snap) ImportImage(ctx context.Context, reader io.Reader) error {
 	if s.ImportImageCalledWith == nil {
 		s.ImportImageCalledWith = make([]string, 0, 1)
 	}
-	b, _ := ioutil.ReadAll(reader)
+	b, _ := io.ReadAll(reader)
 	s.ImportImageCalledWith = append(s.ImportImageCalledWith, string(b))
 	return nil
 }
