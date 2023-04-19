@@ -7,6 +7,8 @@ import (
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap/mock"
 	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
+
+	. "github.com/onsi/gomega"
 )
 
 func TestGetServiceArgument(t *testing.T) {
@@ -44,14 +46,36 @@ func TestGetServiceArgument(t *testing.T) {
 		{service: "service", key: "--in-the-same-row", expectedValue: ""},
 	} {
 		t.Run(fmt.Sprintf("%s/%s", tc.service, tc.key), func(t *testing.T) {
-			if v := snaputil.GetServiceArgument(s, tc.service, tc.key); v != tc.expectedValue {
-				t.Fatalf("Expected argument value to be %q, but it was %q instead", tc.expectedValue, v)
-			}
+			g := NewWithT(t)
+
+			g.Expect(snaputil.GetServiceArgument(s, tc.service, tc.key)).To(Equal(tc.expectedValue))
 		})
 	}
 }
 
+type mockSnapFileNotExist struct {
+	mock.Snap
+}
+
+func (s *mockSnapFileNotExist) ReadServiceArguments(serviceName string) (string, error) {
+	_, err := os.ReadFile("testdata/fileThatDoesNotExist")
+	return "", fmt.Errorf("wrapped not found error: %w", err)
+}
+
 func TestUpdateServiceArguments(t *testing.T) {
+	t.Run("HandleFileNotExist", func(t *testing.T) {
+		g := NewWithT(t)
+		s := &mockSnapFileNotExist{
+			Snap: mock.Snap{},
+		}
+
+		changed, err := snaputil.UpdateServiceArguments(s, "service", []map[string]string{{"--key": "value"}}, nil)
+		g.Expect(err).To(BeNil())
+		g.Expect(changed).To(BeTrue())
+
+		g.Expect(s.Snap.ServiceArguments["service"]).To(Equal("--key=value\n"))
+	})
+
 	initialArguments := `
 --key=value
 --other=other-value
@@ -62,7 +86,27 @@ func TestUpdateServiceArguments(t *testing.T) {
 		update         []map[string]string
 		delete         []string
 		expectedValues map[string]string
+		expectedChange bool
 	}{
+		{
+			name:   "no-change",
+			update: []map[string]string{{"--key": "value"}},
+			delete: []string{"--non-existent"},
+			expectedValues: map[string]string{
+				"--key":   "value",
+				"--other": "other-value",
+			},
+			expectedChange: false,
+		},
+		{
+			name:   "no-change-space",
+			update: []map[string]string{{"--with-space": "value2"}},
+			delete: []string{},
+			expectedValues: map[string]string{
+				"--with-space": "value2",
+			},
+			expectedChange: false,
+		},
 		{
 			name:   "simple-update",
 			update: []map[string]string{{"--key": "new-value"}},
@@ -71,6 +115,17 @@ func TestUpdateServiceArguments(t *testing.T) {
 				"--key":   "new-value",
 				"--other": "other-value",
 			},
+			expectedChange: true,
+		},
+		{
+			name:   "delete-one",
+			delete: []string{"--with-space"},
+			expectedValues: map[string]string{
+				"--key":        "value",
+				"--other":      "other-value",
+				"--with-space": "",
+			},
+			expectedChange: true,
 		},
 		{
 			name:   "update-many-delete-one",
@@ -81,6 +136,7 @@ func TestUpdateServiceArguments(t *testing.T) {
 				"--other":      "other-new-value",
 				"--with-space": "",
 			},
+			expectedChange: true,
 		},
 		{
 			name:   "update-many-single-list",
@@ -89,12 +145,14 @@ func TestUpdateServiceArguments(t *testing.T) {
 				"--key":   "new-value",
 				"--other": "other-new-value",
 			},
+			expectedChange: true,
 		},
 		{
 			name: "no-updates",
 			expectedValues: map[string]string{
 				"--key": "value",
 			},
+			expectedChange: false,
 		},
 		{
 			name:   "new-opt",
@@ -102,23 +160,32 @@ func TestUpdateServiceArguments(t *testing.T) {
 			expectedValues: map[string]string{
 				"--new-opt": "opt-value",
 			},
+			expectedChange: true,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			g := NewWithT(t)
+
 			s := &mock.Snap{
 				ServiceArguments: map[string]string{
 					"service": initialArguments,
 				},
 			}
 
-			if err := snaputil.UpdateServiceArguments(s, "service", tc.update, tc.delete); err != nil {
-				t.Fatalf("Expected no error updating arguments file but received %q", err)
-			}
+			changed, err := snaputil.UpdateServiceArguments(s, "service", tc.update, tc.delete)
+			g.Expect(err).To(BeNil())
+			g.Expect(changed).To(Equal(tc.expectedChange))
+
 			for key, expectedValue := range tc.expectedValues {
-				if value := snaputil.GetServiceArgument(s, "service", key); value != expectedValue {
-					t.Fatalf("Expected value for argument %q does not match (%q and %q)", key, value, expectedValue)
-				}
+				g.Expect(snaputil.GetServiceArgument(s, "service", key)).To(Equal(expectedValue))
 			}
+
+			t.Run("Reapply", func(t *testing.T) {
+				g := NewWithT(t)
+				changed, err := snaputil.UpdateServiceArguments(s, "service", tc.update, tc.delete)
+				g.Expect(err).To(BeNil())
+				g.Expect(changed).To(BeFalse())
+			})
 		})
 	}
 }
