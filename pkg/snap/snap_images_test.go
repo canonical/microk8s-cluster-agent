@@ -3,13 +3,16 @@ package snap_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 	utiltest "github.com/canonical/microk8s-cluster-agent/pkg/util/test"
+	. "github.com/onsi/gomega"
 )
 
 var mockCtr = `#!/bin/bash
@@ -33,18 +36,15 @@ func TestImportImage(t *testing.T) {
 	mockRunner := &utiltest.MockRunner{}
 	s := snap.NewSnap("testdata", "testdata", snap.WithCommandRunner(mockRunner.Run))
 
+	g := NewWithT(t)
 	err := s.ImportImage(context.Background(), bytes.NewBufferString("IMAGEDATA"))
-	if err != nil {
-		t.Fatalf("Expected no error but got %q instead", err)
-	}
+	g.Expect(err).To(BeNil())
 
-	expectedCmd := "testdata/microk8s-ctr.wrapper image import -"
-	if cmd, err := util.ReadFile("testdata/arguments"); err != nil || strings.TrimSpace(cmd) != "testdata/microk8s-ctr.wrapper image import -" {
-		t.Fatalf("Expected command to be %q but it was %q instead", expectedCmd, cmd)
-	}
+	cmd, err := util.ReadFile("testdata/arguments")
+	g.Expect(err).To(BeNil())
+	g.Expect(strings.TrimSpace(cmd)).To(Equal(fmt.Sprintf("testdata/microk8s-ctr.wrapper image import --platform %s -", runtime.GOARCH)))
 
-	expectedStdin := "IMAGEDATA"
-	if stdin, err := util.ReadFile("testdata/stdin"); err != nil || stdin != "IMAGEDATA" {
-		t.Fatalf("Expected stdin to be %q but it was %q instead", expectedStdin, stdin)
-	}
+	stdin, err := util.ReadFile("testdata/stdin")
+	g.Expect(err).To(BeNil())
+	g.Expect(stdin).To(Equal("IMAGEDATA"))
 }
