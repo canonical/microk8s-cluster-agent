@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -339,7 +340,7 @@ func (s *snap) SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, erro
 }
 
 func (s *snap) ImportImage(ctx context.Context, reader io.Reader) error {
-	importCmd := exec.CommandContext(ctx, s.snapPath("microk8s-ctr.wrapper"), "image", "import", "-")
+	importCmd := exec.CommandContext(ctx, s.snapPath("microk8s-ctr.wrapper"), "image", "import", "--platform", runtime.GOARCH, "-")
 	importCmd.Stdin = reader
 	importCmd.Stdout = os.Stdout
 	importCmd.Stdout = os.Stderr
