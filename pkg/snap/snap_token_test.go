@@ -189,6 +189,37 @@ func TestSelfCallbackToken(t *testing.T) {
 	}
 }
 
+func TestHasTokenAuth(t *testing.T) {
+	if err := os.MkdirAll("testdata/args", 0755); err != nil {
+		t.Fatalf("Failed to create test directory: %s", err)
+	}
+	defer os.RemoveAll("testdata/args")
+	s := snap.NewSnap("testdata", "testdata")
+	if token, err := s.HasTokenAuth(); token != false || err == nil {
+		t.Fatalf("Expected not a tokens auth and an error, but got tokens auth %t and error %s", token, err)
+	}
+	args := `
+--arg-one=value1
+--arg-two=value2
+`
+	if err := os.WriteFile("testdata/args/kube-apiserver", []byte(args), 0600); err != nil {
+		t.Fatalf("Failed to create API server args file: %s", err)
+	}
+	if token, err := s.HasTokenAuth(); token != false || err != nil {
+		t.Fatalf("Expected not a tokens auth and no error, but got tokens auth %t and error %s", token, err)
+	}
+	args = `
+--arg-one=value1
+--token-auth-file=somefile
+`
+	if err := os.WriteFile("testdata/args/kube-apiserver", []byte(args), 0600); err != nil {
+		t.Fatalf("Failed to create API server args file: %s", err)
+	}
+	if token, err := s.HasTokenAuth(); token != true || err != nil {
+		t.Fatalf("Expected not a tokens auth and no error, but got tokens auth %t and error %s", token, err)
+	}
+}
+
 func TestKnownTokens(t *testing.T) {
 	if err := os.MkdirAll("testdata/credentials", 0755); err != nil {
 		t.Fatalf("Failed to create test directory: %s", err)

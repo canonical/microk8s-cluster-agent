@@ -305,6 +305,22 @@ func (s *snap) GetOrCreateKubeletToken(hostname string) (string, error) {
 	return token, nil
 }
 
+func (s *snap) HasTokenAuth() (bool, error) {
+	file := s.snapDataPath("args", "kube-apiserver")
+	allArgs, err := util.ReadFile(file)
+	if err != nil {
+		return false, fmt.Errorf("failed read API server arguments file: %w", err)
+	}
+	for _, line := range strings.Split(allArgs, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "--token-auth-file") {
+			fmt.Printf("Line matching %s\n", line)
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (s *snap) GetKnownToken(username string) (string, error) {
 	s.knownTokensMu.Lock()
 	defer s.knownTokensMu.Unlock()

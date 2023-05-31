@@ -87,6 +87,8 @@ type Snap interface {
 	GetOrCreateKubeletToken(hostname string) (string, error)
 	// GetKnownToken returns the token for a known user from the known_users.csv file.
 	GetKnownToken(username string) (string, error)
+	// HasTokenAuth returns true if token auth is in place, false otherwise.
+	HasTokenAuth() (bool, error)
 
 	// SignCertificate signs the certificate signing request, and returns the certificate in PEM format.
 	SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, error)

@@ -203,9 +203,16 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 		if err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve service account key: %w", err)
 		}
-		response.AdminToken, err = a.Snap.GetKnownToken("admin")
+
+		tokens, err := a.Snap.HasTokenAuth()
 		if err != nil {
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve token for admin user: %w", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve the API server configuration: %w", err)
+		}
+		if tokens {
+			response.AdminToken, err = a.Snap.GetKnownToken("admin")
+			if err != nil {
+				return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve token for admin user: %w", err)
+			}
 		}
 		response.DqliteClusterCertificate, err = a.Snap.ReadDqliteCert()
 		if err != nil {
