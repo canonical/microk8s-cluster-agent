@@ -107,7 +107,6 @@ Role: 0
 			DqliteVoterNodes:           []string{"10.10.10.10:19001", "10.10.10.11:19001"},
 			ServiceAccountKey:          "SERVICE ACCOUNT KEY DATA",
 			CertificateAuthorityKey:    func(s string) *string { return &s }("CA KEY DATA"),
-			AdminToken:                 "admin-token-123",
 			DqliteClusterCertificate:   "DQLITE CERTIFICATE DATA",
 			DqliteClusterKey:           "DQLITE KEY DATA",
 			ClusterCIDR:                "10.1.0.0/16",
