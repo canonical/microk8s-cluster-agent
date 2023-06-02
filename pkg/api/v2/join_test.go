@@ -107,7 +107,6 @@ Role: 0
 			DqliteVoterNodes:           []string{"10.10.10.10:19001", "10.10.10.11:19001"},
 			ServiceAccountKey:          "SERVICE ACCOUNT KEY DATA",
 			CertificateAuthorityKey:    func(s string) *string { return &s }("CA KEY DATA"),
-			AdminToken:                 "admin-token-123",
 			DqliteClusterCertificate:   "DQLITE CERTIFICATE DATA",
 			DqliteClusterKey:           "DQLITE KEY DATA",
 			ClusterCIDR:                "10.1.0.0/16",
@@ -199,7 +198,7 @@ Role: 0
 		ServiceAccountKey: "SERVICE ACCOUNT KEY DATA",
 		ServiceArguments: map[string]string{
 			"kubelet":        "kubelet arguments\n",
-			"kube-apiserver": "--secure-port 16443\n--authorization-mode=Node",
+			"kube-apiserver": "--secure-port 16443\n--authorization-mode=Node\n--token-auth-file=known_tokens.csv\n",
 			"kube-proxy":     "--cluster-cidr 10.1.0.0/16",
 			"cluster-agent":  "--bind=0.0.0.0:25000",
 		},
