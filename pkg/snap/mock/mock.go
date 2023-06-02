@@ -276,11 +276,6 @@ func (s *Snap) GetOrCreateKubeletToken(hostname string) (string, error) {
 	return s.KubeletTokens[hostname], nil
 }
 
-// HasTokenAuth is a mock implementation for the snap.Snap interface.
-func (s *Snap) HasTokenAuth() (bool, error) {
-	return len(s.KnownTokens) > 0, nil
-}
-
 // GetKnownToken is a mock implementation for the snap.Snap interface.
 func (s *Snap) GetKnownToken(username string) (string, error) {
 	if t, ok := s.KnownTokens[username]; ok {

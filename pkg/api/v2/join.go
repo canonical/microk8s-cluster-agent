@@ -204,11 +204,8 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve service account key: %w", err)
 		}
 
-		tokens, err := a.Snap.HasTokenAuth()
-		if err != nil {
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve the API server configuration: %w", err)
-		}
-		if tokens {
+		hasTokenAuth := snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--token-auth-file") != ""
+		if hasTokenAuth {
 			response.AdminToken, err = a.Snap.GetKnownToken("admin")
 			if err != nil {
 				return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve token for admin user: %w", err)
