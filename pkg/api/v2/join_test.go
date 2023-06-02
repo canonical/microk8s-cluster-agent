@@ -199,7 +199,7 @@ Role: 0
 		ServiceAccountKey: "SERVICE ACCOUNT KEY DATA",
 		ServiceArguments: map[string]string{
 			"kubelet":        "kubelet arguments\n",
-			"kube-apiserver": "--secure-port 16443\n--authorization-mode=Node",
+			"kube-apiserver": "--secure-port 16443\n--authorization-mode=Node\n--token-auth-file=known_tokens.csv\n",
 			"kube-proxy":     "--cluster-cidr 10.1.0.0/16",
 			"cluster-agent":  "--bind=0.0.0.0:25000",
 		},
