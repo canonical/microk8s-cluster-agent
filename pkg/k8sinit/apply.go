@@ -151,8 +151,11 @@ func (s *launcherScope) reconcileServiceArgs(ctx context.Context, configFile str
 	return changed, nil
 }
 
-func (s *launcherScope) reconcileExtraSANs(extraSANs []string) error {
-	csr, err := util.GenerateCSRConf(extraSANs)
+func (s *launcherScope) reconcileExtraSANs(extraSANs *[]string) error {
+	if extraSANs == nil {
+		return nil
+	}
+	csr, err := util.GenerateCSRConf(*extraSANs)
 	if err != nil {
 		return fmt.Errorf("failed to generate csr configuration: %w", err)
 	}

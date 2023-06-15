@@ -421,3 +421,33 @@ func TestJoinCluster(t *testing.T) {
 		})
 	}
 }
+
+func TestExtraSANs(t *testing.T) {
+	for _, sans := range []*[]string{nil, {}, {"1.1.1.1"}} {
+		t.Run(fmt.Sprintf("sans=%v", sans), func(t *testing.T) {
+			for _, preInit := range []bool{false, true} {
+				t.Run(fmt.Sprintf("preInit=%v", preInit), func(t *testing.T) {
+					s := &mock.Snap{}
+
+					l := NewLauncher(s, preInit)
+					c := MultiPartConfiguration{[]*Configuration{{
+						Version:   minimumConfigFileVersionRequired.String(),
+						ExtraSANs: sans,
+					}}}
+
+					g := NewWithT(t)
+					err := l.Apply(context.Background(), c)
+					g.Expect(err).To(BeNil())
+					if sans == nil {
+						g.Expect(s.CSRConfig).To(BeEmpty())
+					} else {
+						g.Expect(s.CSRConfig).To(Not(BeEmpty()))
+						for _, san := range *sans {
+							g.Expect(s.CSRConfig).To(ContainSubstring(san))
+						}
+					}
+				})
+			}
+		})
+	}
+}
