@@ -93,7 +93,7 @@ type Configuration struct {
 	ExtraKubeliteEnv map[string]*string `yaml:"extraKubeliteEnv"`
 
 	// ExtraSANs are a list of extra Subject Alternate Names to add to the local API server.
-	ExtraSANs []string `yaml:"extraSANs"`
+	ExtraSANs *[]string `yaml:"extraSANs"`
 
 	// ContainerdRegistryConfigs is containerd hosts.toml configurations to configure registries.
 	ContainerdRegistryConfigs map[string]string `yaml:"containerdRegistryConfigs"`
@@ -244,7 +244,7 @@ func (c *Configuration) isZero() bool {
 		return false
 	case len(c.ExtraKubeliteEnv) > 0:
 		return false
-	case len(c.ExtraSANs) > 0:
+	case c.ExtraSANs != nil && len(*c.ExtraSANs) > 0:
 		return false
 	case len(c.ContainerdRegistryConfigs) > 0:
 		return false
