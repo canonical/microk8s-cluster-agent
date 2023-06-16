@@ -24,7 +24,7 @@ func TestParse(t *testing.T) {
 			expectConfiguration: k8sinit.MultiPartConfiguration{
 				Parts: []*k8sinit.Configuration{{
 					Version: "0.1.0",
-					ExtraSANs: []string{
+					ExtraSANs: &[]string{
 						"10.10.10.10",
 						"microk8s.example.com",
 					},
@@ -106,6 +106,18 @@ func TestParse(t *testing.T) {
 			expectConfiguration: k8sinit.MultiPartConfiguration{
 				Parts: []*k8sinit.Configuration{{
 					Version: "0.1.0",
+				}},
+			},
+		},
+		{
+			name: "extra-sans.yaml",
+			expectConfiguration: k8sinit.MultiPartConfiguration{
+				Parts: []*k8sinit.Configuration{{
+					Version:   "0.1.0",
+					ExtraSANs: nil,
+				}, {
+					Version:   "0.1.0",
+					ExtraSANs: &[]string{},
 				}},
 			},
 		},
