@@ -17,7 +17,7 @@ go.lint:
 	cd tools && go run golang.org/x/lint/golint -set_exit_status ../...
 
 go.staticcheck:
-	cd tools && go install honnef.co/go/tools/cmd/staticcheck
+	cd tools && go install honnef.co/go/tools/cmd/staticcheck@2023.1.3
 	$(shell go env GOPATH)/bin/staticcheck ./...
 
 go.test:
