@@ -155,6 +155,9 @@ type Configuration struct {
 
 	// Join configuration. Setting this will attempt to join the local node to an already existing MicroK8s cluster.
 	Join JoinConfiguration `yaml:"join"`
+
+	// NetworkConfig is configuration of network such us IPv4/v6 cluster and service CIDRs.
+	NetworkConfig map[string]*string `yaml:"networkConfig"`
 }
 
 // ParseConfiguration tries to parse a Configuration object from YAML data.
@@ -273,6 +276,8 @@ func (c *Configuration) isZero() bool {
 	case len(c.ExtraFlanneldEnv) > 0:
 		return false
 	case len(c.ExtraConfigFiles) > 0:
+		return false
+	case len(c.NetworkConfig) > 0:
 		return false
 	}
 	return true
