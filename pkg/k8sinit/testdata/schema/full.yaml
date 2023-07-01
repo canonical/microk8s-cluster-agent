@@ -47,7 +47,7 @@ containerdRegistryConfigs:
 join:
   url: 10.0.0.10:25000/my-token/hash
   worker: true
-networkConfig:
+extraCNIEnv:
   IPv4_SUPPORT: true
   IPv4_CLUSTER_CIDR: 10.2.0.0/16
   IPv4_SERVICE_CIDR: 10.153.183.0/24

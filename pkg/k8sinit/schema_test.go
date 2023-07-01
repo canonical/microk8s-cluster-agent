@@ -80,7 +80,7 @@ func TestParse(t *testing.T) {
 						URL:    "10.0.0.10:25000/my-token/hash",
 						Worker: true,
 					},
-					NetworkConfig: map[string]*string{
+					ExtraCNIEnv: map[string]*string{
 						"IPv4_SUPPORT":      &[]string{"true"}[0],
 						"IPv4_CLUSTER_CIDR": &[]string{"10.2.0.0/16"}[0],
 						"IPv4_SERVICE_CIDR": &[]string{"10.153.183.0/24"}[0],

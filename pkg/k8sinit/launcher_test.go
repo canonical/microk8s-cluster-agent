@@ -149,7 +149,7 @@ func TestComponentConfiguration(t *testing.T) {
 				c.ExtraKubeSchedulerArgs = map[string]*string{
 					"--KubeScheduler-arg": &[]string{"value"}[0],
 				}
-				c.NetworkConfig = map[string]*string{
+				c.ExtraCNIEnv = map[string]*string{
 					"IPv4_SUPPORT":      &[]string{"true"}[0],
 					"IPv4_CLUSTER_CIDR": &[]string{"10.2.0.0/16"}[0],
 				}
