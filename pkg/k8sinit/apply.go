@@ -89,10 +89,11 @@ func (s *launcherScope) applyPart(ctx context.Context, c *Configuration) error {
 		{configFile: "etcd-env", restartService: "etcd", args: c.ExtraEtcdEnv},
 		{configFile: "flanneld", restartService: "flanneld", args: c.ExtraFlanneldArgs},
 		{configFile: "flanneld-env", restartService: "flanneld", args: c.ExtraFlanneldEnv},
+		{configFile: "cni-env", restartService: "", args: c.ExtraCNIEnv},
 	} {
 		if changed, err := s.reconcileServiceArgs(ctx, item.configFile, item.args); err != nil {
 			return fmt.Errorf("failed to reconcile config file %q: %w", item.configFile, err)
-		} else if changed {
+		} else if changed && item.restartService != "" {
 			s.mustRestartServices[item.restartService] = struct{}{}
 		}
 	}
