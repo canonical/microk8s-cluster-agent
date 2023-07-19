@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
+
+	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
 )
 
 // findMatchingBindAddress attempts to find the bind address for dqlite from the 'host:port' of the join request.
@@ -63,4 +66,18 @@ nextAddr:
 
 	// no host address matched
 	return "", fmt.Errorf("address %v was not found in any host interface. refuse to update dqlite bind address to %v as it would break the cluster", hostIP, hostIP)
+}
+
+// kubeAPIServerPrefersInternalIPForKubelet checks whether the --kubelet-preferred-address-types of kube-apiserver includes 'InternalIP' with higher preference over 'Hostname'
+func (a *API) kubeAPIServerPrefersInternalIPForKubelet() bool {
+	order := snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--kubelet-preferred-address-types")
+
+	// 'Hostname' has precedence by default, argument must contain 'InternalIP'
+	if ipIndex := strings.Index(order, "InternalIP"); ipIndex != -1 {
+		hostnameIndex := strings.Index(order, "Hostname")
+		// true if 'Hostname' is missing or 'InternalIP' is before 'Hostname'
+		return hostnameIndex == -1 || ipIndex < hostnameIndex
+	}
+
+	return false
 }

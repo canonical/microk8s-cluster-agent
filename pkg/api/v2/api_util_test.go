@@ -5,6 +5,7 @@ import (
 	"net"
 	"testing"
 
+	"github.com/canonical/microk8s-cluster-agent/pkg/snap/mock"
 	utiltest "github.com/canonical/microk8s-cluster-agent/pkg/util/test"
 	. "github.com/onsi/gomega"
 )
@@ -19,6 +20,36 @@ func TestStdlibPreconditions(t *testing.T) {
 		g.Expect(err).To(BeNil(), "net.ParseCIDR() must not fail for %v", addr.String())
 		g.Expect(ip).ToNot(BeNil(), "Address for %v must not be nil", addr.String())
 		g.Expect(subnet).ToNot(BeNil(), "Subnet for %v must not be nil", addr.String())
+	}
+}
+
+func TestKubeAPIServerPrefersInternalIPForKubelet(t *testing.T) {
+	for _, tc := range []struct {
+		arg    string
+		prefer bool
+	}{
+		{arg: "", prefer: false},
+		{arg: "Hostname", prefer: false},
+		{arg: "Hostname,InternalIP", prefer: false},
+		{arg: "Hostname,ExternalIP,ExternalDNS", prefer: false},
+		{arg: "Hostname,ExternalIP,ExternalDNS,InternalIP", prefer: false},
+		{arg: "InternalIP", prefer: true},
+		{arg: "InternalIP,Hostname", prefer: true},
+		{arg: "InternalIP,ExternalIP,Hostname", prefer: true},
+		{arg: "InternalIP,ExternalIP", prefer: true},
+	} {
+		t.Run(tc.arg, func(t *testing.T) {
+			g := NewWithT(t)
+			a := API{
+				Snap: &mock.Snap{
+					ServiceArguments: map[string]string{
+						"kube-apiserver": fmt.Sprintf("--kubelet-preferred-address-types=%s", tc.arg),
+					},
+				},
+			}
+
+			g.Expect(a.kubeAPIServerPrefersInternalIPForKubelet()).To(Equal(tc.prefer))
+		})
 	}
 }
 
