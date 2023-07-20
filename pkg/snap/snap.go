@@ -325,16 +325,12 @@ func (s *snap) GetKnownToken(username string) (string, error) {
 func (s *snap) SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, error) {
 	// TODO: consider using crypto/x509 for this instead of relying on openssl commands.
 	// NOTE(neoaggelos): x509.CreateCertificate() has some hardcoded fields that are incompatible with MicroK8s.
-	signCmd := exec.CommandContext(ctx,
-		"openssl", "x509", "-sha256", "-req",
-		"-CA", s.snapDataPath("certs", "ca.crt"), "-CAkey", s.snapDataPath("certs", "ca.key"),
-		"-CAcreateserial", "-days", "3650",
-	)
+	signCmd := exec.CommandContext(ctx, s.snapPath("scripts", "certs", "sign-certificate.sh"))
 	signCmd.Stdin = bytes.NewBuffer(csrPEM)
 	stdout := &bytes.Buffer{}
 	signCmd.Stdout = stdout
 	if err := signCmd.Run(); err != nil {
-		return nil, fmt.Errorf("openssl failed: %w", err)
+		return nil, fmt.Errorf("./scripts/certs/sign-certificate.sh failed: %w", err)
 	}
 	return stdout.Bytes(), nil
 }
