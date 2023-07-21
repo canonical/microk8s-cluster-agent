@@ -15,7 +15,7 @@ func TestJoin(t *testing.T) {
 		CA: "CA CERTIFICATE DATA",
 		ServiceArguments: map[string]string{
 			"etcd":           "--listen-client-urls=https://0.0.0.0:12379",
-			"kube-apiserver": "--secure-port 16443",
+			"kube-apiserver": "--secure-port 16443\n--token-auth-file tokens-file",
 			"kube-proxy":     "--cluster-cidr 10.1.0.0/16",
 			"kubelet":        "kubelet arguments\n",
 		},
@@ -75,14 +75,15 @@ func TestJoin(t *testing.T) {
 			t.Fatal("Expected non-nil response")
 		}
 		expectedResponse := &v1.JoinResponse{
-			CertificateAuthority: "CA CERTIFICATE DATA",
-			EtcdEndpoint:         "https://0.0.0.0:12379",
-			APIServerPort:        "16443",
-			KubeProxyToken:       "kube-proxy-token",
-			KubeletArgs:          "kubelet arguments\n\n--hostname-override=10.10.10.10",
-			KubeletToken:         resp.KubeletToken,
-			HostNameOverride:     "10.10.10.10",
-			ClusterCIDR:          "10.1.0.0/16",
+			CertificateAuthority:        "CA CERTIFICATE DATA",
+			EtcdEndpoint:                "https://0.0.0.0:12379",
+			APIServerAuthenticationMode: "Token",
+			APIServerPort:               "16443",
+			KubeProxyToken:              "kube-proxy-token",
+			KubeletArgs:                 "kubelet arguments\n\n--hostname-override=10.10.10.10",
+			KubeletToken:                resp.KubeletToken,
+			HostNameOverride:            "10.10.10.10",
+			ClusterCIDR:                 "10.1.0.0/16",
 		}
 		if *resp != *expectedResponse {
 			t.Fatalf("Expected response %#v, but it was %#v", expectedResponse, resp)
@@ -114,5 +115,36 @@ func TestJoin(t *testing.T) {
 		if len(s.CreateNoCertsReissueLockCalledWith) != 1 {
 			t.Fatal("Expected certificate reissue lock to be in place after successful join, but it is not")
 		}
+
+		s.ServiceArguments["kube-apiserver"] = "--secure-port 16443"
+		token := "valid-cluster-token"
+		resp, err = apiv1.Join(context.Background(), v1.JoinRequest{
+			ClusterToken:     token,
+			HostName:         "my-hostname",
+			ClusterAgentPort: "25000",
+			RemoteAddress:    "10.10.10.10:41422",
+			CallbackToken:    "callback-token",
+		})
+		if err != nil {
+			t.Fatalf("Expected no errors, but got %s", err)
+		}
+		if resp == nil {
+			t.Fatal("Expected non-nil response")
+		}
+		expectedResponse = &v1.JoinResponse{
+			CertificateAuthority:        "CA CERTIFICATE DATA",
+			EtcdEndpoint:                "https://0.0.0.0:12379",
+			APIServerAuthenticationMode: "Cert",
+			APIServerPort:               "16443",
+			KubeProxyToken:              token,
+			KubeletArgs:                 "kubelet arguments\n\n--hostname-override=10.10.10.10",
+			KubeletToken:                token,
+			HostNameOverride:            "10.10.10.10",
+			ClusterCIDR:                 "10.1.0.0/16",
+		}
+		if *resp != *expectedResponse {
+			t.Fatalf("Expected response %#v, but it was %#v", expectedResponse, resp)
+		}
+
 	})
 }
