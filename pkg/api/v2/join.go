@@ -103,7 +103,8 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 	}
 
 	// Check that hostname resolves to the expected IP address
-	if util.GetRemoteHost(a.LookupIP, req.RemoteHostName, req.RemoteAddress) != req.RemoteHostName {
+	// The check is only required if 'Hostname' is preferred over 'InternalIP' to communicate with the Kubelet
+	if !a.kubeAPIServerPrefersInternalIPForKubelet() && util.GetRemoteHost(a.LookupIP, req.RemoteHostName, req.RemoteAddress) != req.RemoteHostName {
 		return nil, http.StatusBadRequest, fmt.Errorf("the hostname (%s) of the joining node does not resolve to the IP %q. Refusing join", req.RemoteHostName, remoteIP)
 	}
 

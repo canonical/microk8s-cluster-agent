@@ -3,14 +3,15 @@ package v2_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
-	"reflect"
 	"testing"
 	"time"
 
 	v2 "github.com/canonical/microk8s-cluster-agent/pkg/api/v2"
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap/mock"
 	utiltest "github.com/canonical/microk8s-cluster-agent/pkg/util/test"
+	. "github.com/onsi/gomega"
 )
 
 // TestJoin tests responses when joining control plane and worker nodes in an existing cluster.
@@ -68,19 +69,15 @@ Role: 0
 		ListControlPlaneNodeIPs: mockListControlPlaneNodes("10.0.0.1", "10.0.0.2"),
 	}
 	t.Run("InvalidToken", func(t *testing.T) {
+		g := NewWithT(t)
 		resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{ClusterToken: "invalid-token"})
-		if err == nil {
-			t.Fatalf("Expected error but did not receive any")
-		}
-		if resp != nil {
-			t.Fatalf("Expected a nil response but received %#v", resp)
-		}
-		if !reflect.DeepEqual(s.ConsumeClusterTokenCalledWith, []string{"invalid-token"}) {
-			t.Fatalf("Expected ConsumeClusterToken to be called with %v, but it was called with %v instead", []string{"invalid-token"}, s.ConsumeClusterTokenCalledWith)
-		}
+		g.Expect(err).NotTo(BeNil())
+		g.Expect(resp).To(BeNil())
+		g.Expect(s.ConsumeClusterTokenCalledWith).To(ConsistOf("invalid-token"))
 	})
 
 	t.Run("ControlPlane", func(t *testing.T) {
+		g := NewWithT(t)
 		s.ConsumeClusterTokenCalledWith = nil
 		resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{
 			ClusterToken:     "control-plane-token",
@@ -90,12 +87,8 @@ Role: 0
 			RemoteAddress:    "10.10.10.13:41532",
 			WorkerOnly:       false,
 		})
-		if err != nil {
-			t.Fatalf("Expected no errors, but received %q", err)
-		}
-		if resp == nil {
-			t.Fatal("Expected a response but received nil instead")
-		}
+		g.Expect(err).To(BeNil())
+		g.Expect(resp).NotTo(BeNil())
 
 		expectedResponse := &v2.JoinResponse{
 			CertificateAuthority:       "CA CERTIFICATE DATA",
@@ -111,22 +104,15 @@ Role: 0
 			DqliteClusterKey:           "DQLITE KEY DATA",
 			ClusterCIDR:                "10.1.0.0/16",
 		}
-		if !reflect.DeepEqual(*resp, *expectedResponse) {
-			t.Fatalf("Expected response %#v, but received %#v instead", expectedResponse, resp)
-		}
-		if !reflect.DeepEqual(s.ConsumeClusterTokenCalledWith, []string{"control-plane-token"}) {
-			t.Fatalf("Expected ConsumeClusterToken to be called with %v, but it was called with %v instead", []string{"control-plane-token"}, s.ConsumeClusterTokenCalledWith)
-		}
-
-		if len(s.ApplyCNICalled) != 1 {
-			t.Fatalf("Expected ApplyCNI to be called once, but it was called %d times instead", len(s.ApplyCNICalled))
-		}
-		if len(s.CreateNoCertsReissueLockCalledWith) != 1 {
-			t.Fatalf("Expected CreateNoCertsReissueLock to be called once, but it was called %d times instead", len(s.ApplyCNICalled))
-		}
+		g.Expect(resp).To(Equal(expectedResponse))
+		g.Expect(s.ConsumeClusterTokenCalledWith).To(ConsistOf("control-plane-token"))
+		g.Expect(s.ApplyCNICalled).To(HaveLen(1))
+		g.Expect(s.CreateNoCertsReissueLockCalledWith).To(HaveLen(1))
 	})
 
 	t.Run("Worker", func(t *testing.T) {
+		g := NewWithT(t)
+
 		// Reset
 		s.ConsumeClusterTokenCalledWith = nil
 		s.ApplyCNICalled = nil
@@ -140,12 +126,9 @@ Role: 0
 			HostPort:         "10.10.10.10:25000",
 			ClusterAgentPort: "25000",
 		})
-		if err != nil {
-			t.Fatalf("Expected no errors, but received %q", err)
-		}
-		if resp == nil {
-			t.Fatal("Expected a response but received nil instead")
-		}
+		g.Expect(err).To(BeNil())
+		g.Expect(resp).NotTo(BeNil())
+
 		expectedResponse := &v2.JoinResponse{
 			CertificateAuthority:       "CA CERTIFICATE DATA",
 			CallbackToken:              "callback-token",
@@ -157,28 +140,19 @@ Role: 0
 			ClusterCIDR:                "10.1.0.0/16",
 		}
 
-		if !reflect.DeepEqual(*resp, *expectedResponse) {
-			t.Fatalf("Expected response %#v, but received %#v instead", expectedResponse, resp)
-		}
-		if !reflect.DeepEqual(s.ConsumeClusterTokenCalledWith, []string{"worker-token"}) {
-			t.Fatalf("Expected ConsumeClusterToken to be called with %v, but it was called with %v instead", []string{"worker-token"}, s.ConsumeClusterTokenCalledWith)
-		}
-		expectedCertRequestTokens := []string{"worker-token-kubelet", "worker-token-proxy"}
-		if !reflect.DeepEqual(s.AddCertificateRequestTokenCalledWith, expectedCertRequestTokens) {
-			t.Fatalf("Expected the certificate request tokens %v to be created, but %v were created instead", expectedCertRequestTokens, s.AddCertificateRequestTokenCalledWith)
-		}
-		if len(s.ApplyCNICalled) != 1 {
-			t.Fatalf("Expected ApplyCNI to be called once, but it was called %d times instead", len(s.ApplyCNICalled))
-		}
-		if len(s.CreateNoCertsReissueLockCalledWith) != 1 {
-			t.Fatalf("Expected CreateNoCertsReissueLock to be called once, but it was called %d times instead", len(s.ApplyCNICalled))
-		}
+		g.Expect(resp).To(Equal(expectedResponse))
+		g.Expect(s.ConsumeClusterTokenCalledWith).To(ConsistOf("worker-token"))
+		g.Expect(s.ApplyCNICalled).To(HaveLen(1))
+		g.Expect(s.CreateNoCertsReissueLockCalledWith).To(HaveLen(1))
+		g.Expect(s.AddCertificateRequestTokenCalledWith).To(ConsistOf("worker-token-kubelet", "worker-token-proxy"))
 	})
 }
 
 // TestJoinFirstNode tests responses when joining a control plane node on a new cluster.
 // TestJoinFirstNode mocks the dqlite bind address update and verifies that is is handled properly.
 func TestJoinFirstNode(t *testing.T) {
+	g := NewWithT(t)
+
 	s := &mock.Snap{
 		DqliteLock: true,
 		DqliteCert: "DQLITE CERTIFICATE DATA",
@@ -239,12 +213,8 @@ Role: 0
 		RemoteAddress:    "10.10.10.13:41532",
 		WorkerOnly:       false,
 	})
-	if err != nil {
-		t.Fatalf("Expected no errors, but received %q", err)
-	}
-	if resp == nil {
-		t.Fatal("Expected a response but received nil instead")
-	}
+	g.Expect(err).To(BeNil())
+	g.Expect(resp).NotTo(BeNil())
 
 	expectedResponse := &v2.JoinResponse{
 		CertificateAuthority:       "CA CERTIFICATE DATA",
@@ -261,27 +231,88 @@ Role: 0
 		DqliteClusterKey:           "DQLITE KEY DATA",
 		ClusterCIDR:                "10.1.0.0/16",
 	}
-	if !reflect.DeepEqual(*resp, *expectedResponse) {
-		t.Fatalf("Expected response %#v, but received %#v instead", expectedResponse, resp)
+	g.Expect(resp).To(Equal(expectedResponse))
+	g.Expect(s.ConsumeClusterTokenCalledWith).To(ConsistOf("control-plane-token"))
+	g.Expect(s.ApplyCNICalled).To(HaveLen(1))
+	g.Expect(s.CreateNoCertsReissueLockCalledWith).To(HaveLen(1))
+	g.Expect(s.WriteDqliteUpdateYamlCalledWith).To(ConsistOf("Address: 10.10.10.10:19001\n"))
+	g.Expect(s.RestartServiceCalledWith).To(ConsistOf("k8s-dqlite"))
+}
+
+// TestJoinWithoutDNSResolution tests that node joins are not rejected when the remote hostname does not resolve, but InternalIP is used for kubelet communication.
+func TestJoinWithoutDNSResolution(t *testing.T) {
+	g := NewWithT(t)
+
+	s := &mock.Snap{
+		DqliteLock: true,
+		DqliteCert: "DQLITE CERTIFICATE DATA",
+		DqliteKey:  "DQLITE KEY DATA",
+		DqliteInfoYaml: `
+Address: 10.10.10.10:19001
+ID: 1238719276943521
+Role: 0`,
+		DqliteClusterYaml: `
+- Address: 10.10.10.10:19001
+  ID: 1238719276943521
+  Role: 0`,
+		CA:                "CA CERTIFICATE DATA",
+		CAKey:             "CA KEY DATA",
+		ServiceAccountKey: "SERVICE ACCOUNT KEY DATA",
+		ServiceArguments: map[string]string{
+			"kubelet":        "kubelet arguments\n",
+			"kube-apiserver": "--secure-port 16443\n--authorization-mode=Node\n--kubelet-preferred-address-types=InternalIP,Hostname\n--token-auth-file=known_tokens.csv\n",
+			"kube-proxy":     "--cluster-cidr 10.1.0.0/16",
+			"cluster-agent":  "--bind=0.0.0.0:25000",
+		},
+		ClusterTokens:     []string{"control-plane-token"},
+		SelfCallbackToken: "callback-token",
+		CNIYaml:           `some random content. "first-found"`,
+		KnownTokens: map[string]string{
+			"admin": "admin-token-123",
+		},
 	}
-	if !reflect.DeepEqual(s.ConsumeClusterTokenCalledWith, []string{"control-plane-token"}) {
-		t.Fatalf("Expected ConsumeClusterToken to be called with %v, but it was called with %v instead", []string{"control-plane-token"}, s.ConsumeClusterTokenCalledWith)
-	}
-	expectedUpdate := []string{"Address: 10.10.10.10:19001\n"}
-	if !reflect.DeepEqual(s.WriteDqliteUpdateYamlCalledWith, expectedUpdate) {
-		t.Fatalf("Expected WriteDqliteUpdateYaml to be called with %v, but it was called with %v instead", expectedUpdate, s.WriteDqliteUpdateYamlCalledWith)
+	apiv2 := &v2.API{
+		Snap: s,
+		LookupIP: func(hostname string) ([]net.IP, error) {
+			return nil, fmt.Errorf("no DNS resolution")
+		},
+		InterfaceAddrs: func() ([]net.Addr, error) {
+			return []net.Addr{
+				&utiltest.MockCIDR{CIDR: "127.0.0.1/8"},
+				&utiltest.MockCIDR{CIDR: "10.10.10.10/16"},
+			}, nil
+		},
 	}
 
-	expectedRestart := []string{"k8s-dqlite"}
-	if !reflect.DeepEqual(s.RestartServiceCalledWith, expectedRestart) {
-		t.Fatalf("Expected the services %v to restart, but %v were restarted instead", expectedRestart, s.RestartServiceCalledWith)
+	resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{
+		ClusterToken:     "control-plane-token",
+		RemoteHostName:   "test-worker-nohostname",
+		ClusterAgentPort: "25000",
+		HostPort:         "10.10.10.10:25000",
+		RemoteAddress:    "10.10.10.13:41532",
+		WorkerOnly:       false,
+	})
+	g.Expect(err).To(BeNil())
+	g.Expect(resp).NotTo(BeNil())
+	expectedResponse := &v2.JoinResponse{
+		CertificateAuthority:       "CA CERTIFICATE DATA",
+		CallbackToken:              "callback-token",
+		APIServerPort:              "16443",
+		APIServerAuthorizationMode: "Node",
+		KubeletArgs:                "kubelet arguments\n",
+		HostNameOverride:           "10.10.10.13",
+		DqliteVoterNodes:           []string{"10.10.10.10:19001"},
+		ServiceAccountKey:          "SERVICE ACCOUNT KEY DATA",
+		CertificateAuthorityKey:    func(s string) *string { return &s }("CA KEY DATA"),
+		AdminToken:                 "admin-token-123",
+		DqliteClusterCertificate:   "DQLITE CERTIFICATE DATA",
+		DqliteClusterKey:           "DQLITE KEY DATA",
+		ClusterCIDR:                "10.1.0.0/16",
 	}
-	if len(s.ApplyCNICalled) != 1 {
-		t.Fatalf("Expected ApplyCNI to be called once, but it was called %d times instead", len(s.ApplyCNICalled))
-	}
-	if len(s.CreateNoCertsReissueLockCalledWith) != 1 {
-		t.Fatalf("Expected CreateNoCertsReissueLock to be called once, but it was called %d times instead", len(s.ApplyCNICalled))
-	}
+	g.Expect(resp).To(Equal(expectedResponse))
+	g.Expect(s.ConsumeClusterTokenCalledWith).To(ConsistOf("control-plane-token"))
+	g.Expect(s.ApplyCNICalled).To(HaveLen(1))
+	g.Expect(s.CreateNoCertsReissueLockCalledWith).To(HaveLen(1))
 }
 
 func TestUnmarshalWorkerOnlyField(t *testing.T) {
@@ -296,13 +327,11 @@ func TestUnmarshalWorkerOnlyField(t *testing.T) {
 		{b: `"as-controlplane"`, expectedValue: false},
 	} {
 		t.Run(tc.b, func(t *testing.T) {
+			g := NewWithT(t)
 			var v v2.WorkerOnlyField
-			if err := json.Unmarshal([]byte(tc.b), &v); err != nil {
-				t.Fatalf("Expected no error but received %q", err)
-			}
-			if v != tc.expectedValue {
-				t.Fatalf("Expected value to be %v, but it was %v", tc.expectedValue, v)
-			}
+			err := json.Unmarshal([]byte(tc.b), &v)
+			g.Expect(err).To(BeNil())
+			g.Expect(v).To(Equal(tc.expectedValue))
 		})
 	}
 }
