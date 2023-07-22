@@ -3,11 +3,11 @@ package v1_test
 import (
 	"context"
 	"net"
-	"reflect"
 	"testing"
 
 	v1 "github.com/canonical/microk8s-cluster-agent/pkg/api/v1"
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap/mock"
+	. "github.com/onsi/gomega"
 )
 
 func TestJoin(t *testing.T) {
@@ -19,7 +19,7 @@ func TestJoin(t *testing.T) {
 			"kube-proxy":     "--cluster-cidr 10.1.0.0/16",
 			"kubelet":        "kubelet arguments\n",
 		},
-		ClusterTokens: []string{"valid-cluster-token", "valid-other-token"},
+		ClusterTokens: []string{"valid-cluster-token-cert", "valid-cluster-token-auth", "valid-other-token", "valid-token-for-auth-test"},
 		KnownTokens: map[string]string{
 			"admin":             "admin-token",
 			"system:kube-proxy": "kube-proxy-token",
@@ -31,120 +31,105 @@ func TestJoin(t *testing.T) {
 	}
 
 	t.Run("InvalidToken", func(t *testing.T) {
+		g := NewWithT(t)
 		resp, err := apiv1.Join(context.Background(), v1.JoinRequest{
 			ClusterToken: "invalid-token",
 		})
-		if resp != nil {
-			t.Fatalf("Expected a nil response due to invalid token, but got %#v\n", resp)
-		}
-		if err == nil {
-			t.Fatal("Expected an error due to invalid token, but did not get any")
-		}
-		if !reflect.DeepEqual(s.ConsumeClusterTokenCalledWith, []string{"invalid-token"}) {
-			t.Fatalf("Expected ConsumeClusterToken to be called with %v, but it was called with %v instead", []string{"invalid-token"}, s.ConsumeClusterTokenCalledWith)
-		}
+		g.Expect(resp).To(BeNil())
+		g.Expect(err).NotTo(BeNil())
+		g.Expect(s.ConsumeClusterTokenCalledWith).To(ConsistOf("invalid-token"))
 	})
 
 	t.Run("Dqlite", func(t *testing.T) {
+		g := NewWithT(t)
 		s.DqliteLock = true
 		resp, err := apiv1.Join(context.Background(), v1.JoinRequest{
 			ClusterToken: "valid-other-token",
 		})
-		if resp != nil {
-			t.Fatalf("Expected a nil response due to kubelite lock, but got %#v\n", resp)
-		}
-		if err == nil {
-			t.Fatal("Expected an error due to kubelite lock, but did not get any")
-		}
+		g.Expect(resp).To(BeNil())
+		g.Expect(err).NotTo(BeNil())
 		s.DqliteLock = false
 	})
 
-	t.Run("Success", func(t *testing.T) {
-		s.ConsumeClusterTokenCalledWith = nil
-		resp, err := apiv1.Join(context.Background(), v1.JoinRequest{
-			ClusterToken:     "valid-cluster-token",
-			HostName:         "my-hostname",
-			ClusterAgentPort: "25000",
-			RemoteAddress:    "10.10.10.10:41422",
-			CallbackToken:    "callback-token",
-		})
-		if err != nil {
-			t.Fatalf("Expected no errors, but got %s", err)
-		}
-		if resp == nil {
-			t.Fatal("Expected non-nil response")
-		}
-		expectedResponse := &v1.JoinResponse{
-			CertificateAuthority:        "CA CERTIFICATE DATA",
-			EtcdEndpoint:                "https://0.0.0.0:12379",
-			APIServerAuthenticationMode: "Token",
-			APIServerPort:               "16443",
-			KubeProxyToken:              "kube-proxy-token",
-			KubeletArgs:                 "kubelet arguments\n\n--hostname-override=10.10.10.10",
-			KubeletToken:                resp.KubeletToken,
-			HostNameOverride:            "10.10.10.10",
-			ClusterCIDR:                 "10.1.0.0/16",
-		}
-		if *resp != *expectedResponse {
-			t.Fatalf("Expected response %#v, but it was %#v", expectedResponse, resp)
-		}
-		if len(resp.KubeletToken) != 32 {
-			t.Fatalf("Expected kubelet token %q to have length 32", resp.KubeletToken)
-		}
-		if !reflect.DeepEqual(s.ConsumeClusterTokenCalledWith, []string{"valid-cluster-token"}) {
-			t.Fatalf("Expected ConsumeClusterToken to be called with %v, but it was called with %v instead", []string{"valid-cluster-token"}, s.ConsumeClusterTokenCalledWith)
-		}
-		if !reflect.DeepEqual(s.RestartServiceCalledWith, []string{"apiserver"}) {
-			t.Fatalf("Expected API server restart command, but got %v instead", s.RestartServiceCalledWith)
-		}
-
-		kubeletToken, err := s.GetOrCreateKubeletToken("10.10.10.10")
-		if err != nil {
-			t.Fatalf("Expected no error when retrieving kubelet token, but received %q", err)
-		}
-		if kubeletToken != resp.KubeletToken {
-			t.Fatalf("Expected kubelet known token to match response, but they do not (%q != %q)", kubeletToken, resp.KubeletToken)
-		}
-
-		if !reflect.DeepEqual(s.AddCallbackTokenCalledWith, []string{"10.10.10.10:25000 callback-token"}) {
-			t.Fatal("Expected callback-token to be a valid callback token, but it is not")
-		}
-		if !reflect.DeepEqual(s.AddCertificateRequestTokenCalledWith, []string{"valid-cluster-token"}) {
-			t.Fatal("Expected valid-cluster-token to be a valid certificate request token, but it is not")
-		}
-		if len(s.CreateNoCertsReissueLockCalledWith) != 1 {
-			t.Fatal("Expected certificate reissue lock to be in place after successful join, but it is not")
-		}
-
+	t.Run("NoCertAuthNoTokensFile", func(t *testing.T) {
+		g := NewWithT(t)
+		saveArgs := s.ServiceArguments["kube-apiserver"]
 		s.ServiceArguments["kube-apiserver"] = "--secure-port 16443"
-		token := "valid-cluster-token"
-		resp, err = apiv1.Join(context.Background(), v1.JoinRequest{
-			ClusterToken:     token,
-			HostName:         "my-hostname",
-			ClusterAgentPort: "25000",
-			RemoteAddress:    "10.10.10.10:41422",
-			CallbackToken:    "callback-token",
+		resp, err := apiv1.Join(context.Background(), v1.JoinRequest{
+			ClusterToken: "valid-token-for-auth-test",
 		})
-		if err != nil {
-			t.Fatalf("Expected no errors, but got %s", err)
-		}
-		if resp == nil {
-			t.Fatal("Expected non-nil response")
-		}
-		expectedResponse = &v1.JoinResponse{
-			CertificateAuthority:        "CA CERTIFICATE DATA",
-			EtcdEndpoint:                "https://0.0.0.0:12379",
-			APIServerAuthenticationMode: "Cert",
-			APIServerPort:               "16443",
-			KubeProxyToken:              token,
-			KubeletArgs:                 "kubelet arguments\n\n--hostname-override=10.10.10.10",
-			KubeletToken:                token,
-			HostNameOverride:            "10.10.10.10",
-			ClusterCIDR:                 "10.1.0.0/16",
-		}
-		if *resp != *expectedResponse {
-			t.Fatalf("Expected response %#v, but it was %#v", expectedResponse, resp)
-		}
+		g.Expect(resp).To(BeNil())
+		g.Expect(err).NotTo(BeNil())
+		s.ServiceArguments["kube-apiserver"] = saveArgs
+	})
 
+	t.Run("Success", func(t *testing.T) {
+		t.Run("CertAuth", func(t *testing.T) {
+			g := NewWithT(t)
+			s.ConsumeClusterTokenCalledWith = nil
+			s.CreateNoCertsReissueLockCalledWith = nil
+			s.AddCallbackTokenCalledWith = nil
+			s.AddCertificateRequestTokenCalledWith = nil
+			resp, err := apiv1.Join(context.Background(), v1.JoinRequest{
+				ClusterToken:             "valid-cluster-token-cert",
+				HostName:                 "my-hostname",
+				ClusterAgentPort:         "25000",
+				RemoteAddress:            "10.10.10.10:41422",
+				CallbackToken:            "callback-token",
+				CanHandleCertificateAuth: true,
+			})
+			g.Expect(err).To(BeNil())
+			g.Expect(resp).To(Equal(&v1.JoinResponse{
+				CertificateAuthority: "CA CERTIFICATE DATA",
+				EtcdEndpoint:         "https://0.0.0.0:12379",
+				APIServerAuthMode:    v1.APIServerAuthModeCert,
+				APIServerPort:        "16443",
+				KubeProxyToken:       "valid-cluster-token-cert",
+				KubeletArgs:          "kubelet arguments\n\n--hostname-override=10.10.10.10",
+				KubeletToken:         "valid-cluster-token-cert",
+				HostNameOverride:     "10.10.10.10",
+				ClusterCIDR:          "10.1.0.0/16",
+			}))
+			g.Expect(s.ConsumeClusterTokenCalledWith).To(ConsistOf("valid-cluster-token-cert"))
+			g.Expect(s.RestartServiceCalledWith).To(BeEmpty())
+			g.Expect(s.AddCallbackTokenCalledWith).To(ConsistOf("10.10.10.10:25000 callback-token"))
+			g.Expect(s.AddCertificateRequestTokenCalledWith).To(ConsistOf("valid-cluster-token-cert", "valid-cluster-token-cert-kubelet", "valid-cluster-token-cert-proxy"))
+			g.Expect(s.CreateNoCertsReissueLockCalledWith).To(HaveLen(1))
+		})
+
+		t.Run("TokenAuth", func(t *testing.T) {
+			g := NewWithT(t)
+			s.ConsumeClusterTokenCalledWith = nil
+			s.CreateNoCertsReissueLockCalledWith = nil
+			s.AddCallbackTokenCalledWith = nil
+			s.AddCertificateRequestTokenCalledWith = nil
+			resp, err := apiv1.Join(context.Background(), v1.JoinRequest{
+				ClusterToken:             "valid-cluster-token-auth",
+				HostName:                 "my-hostname",
+				ClusterAgentPort:         "25000",
+				RemoteAddress:            "10.10.10.10:41422",
+				CallbackToken:            "callback-token",
+				CanHandleCertificateAuth: false,
+			})
+			g.Expect(err).To(BeNil())
+			kubeletToken, err := s.GetOrCreateKubeletToken("10.10.10.10")
+			g.Expect(err).To(BeNil())
+			g.Expect(resp).To(Equal(&v1.JoinResponse{
+				CertificateAuthority: "CA CERTIFICATE DATA",
+				EtcdEndpoint:         "https://0.0.0.0:12379",
+				APIServerAuthMode:    v1.APIServerAuthModeToken,
+				APIServerPort:        "16443",
+				KubeProxyToken:       "kube-proxy-token",
+				KubeletArgs:          "kubelet arguments\n\n--hostname-override=10.10.10.10",
+				KubeletToken:         kubeletToken,
+				HostNameOverride:     "10.10.10.10",
+				ClusterCIDR:          "10.1.0.0/16",
+			}))
+			g.Expect(s.ConsumeClusterTokenCalledWith).To(ConsistOf("valid-cluster-token-auth"))
+			g.Expect(s.RestartServiceCalledWith).To(ConsistOf("apiserver"))
+			g.Expect(s.AddCallbackTokenCalledWith).To(ConsistOf("10.10.10.10:25000 callback-token"))
+			g.Expect(s.AddCertificateRequestTokenCalledWith).To(ConsistOf("valid-cluster-token-auth"))
+			g.Expect(s.CreateNoCertsReissueLockCalledWith).To(HaveLen(1))
+		})
 	})
 }
