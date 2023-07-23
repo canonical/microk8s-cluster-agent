@@ -21,7 +21,19 @@ type JoinRequest struct {
 	CallbackToken string `json:"callback"`
 	// RemoteAddress is the remote address from which the join request originates. This is retrieved directly from the *http.Request object.
 	RemoteAddress string `json:"-"`
+	// CanHandleCertificateAuth is set by worker nodes that know how to generate x509 certificates for cluster authentication instead of using auth tokens.
+	CanHandleCertificateAuth bool `json:"can_handle_x509_auth"`
 }
+
+// APIServerAuthMode is used to define which mode should be used for authenticating to the kube-apiserver.
+type APIServerAuthMode string
+
+var (
+	// APIServerAuthModeCert instructs the client to configure and use x509 certificates to authenticate with kube-apiserver.
+	APIServerAuthModeCert APIServerAuthMode = "Cert"
+	// APIServerAuthModeToken instructs the client to configure and use static tokens to authenticate with kube-apiserver.
+	APIServerAuthModeToken APIServerAuthMode = "Token"
+)
 
 // JoinResponse is the response data for the join API endpoint.
 type JoinResponse struct {
@@ -30,6 +42,8 @@ type JoinResponse struct {
 	// EtcdEndpoint is the endpoint where the etcd server is running, typically https://0.0.0.0:12379.
 	// Note that "0.0.0.0" in the response will be replaced with the IP used to join the new node.
 	EtcdEndpoint string `json:"etcd"`
+	// APIServerAuthMode instructs the client with auth mode to configure for talking to the kube-apiserver.
+	APIServerAuthMode APIServerAuthMode `json:"api_authn_mode"`
 	// APIServerPort is the port where the kube-apiserver is listening.
 	APIServerPort string `json:"apiport"`
 	// KubeProxyToken is a token used to authenticate kube-proxy on the joining node.
@@ -46,6 +60,12 @@ type JoinResponse struct {
 
 // Join implements "POST /CLUSTER_API_V1/join".
 func (a *API) Join(ctx context.Context, request JoinRequest) (*JoinResponse, error) {
+	response := &JoinResponse{
+		EtcdEndpoint:  snaputil.GetServiceArgument(a.Snap, "etcd", "--listen-client-urls"),
+		APIServerPort: snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--secure-port"),
+		ClusterCIDR:   snaputil.GetServiceArgument(a.Snap, "kube-proxy", "--cluster-cidr"),
+	}
+
 	if !a.Snap.ConsumeClusterToken(request.ClusterToken) {
 		return nil, fmt.Errorf("invalid token")
 	}
@@ -68,35 +88,49 @@ func (a *API) Join(ctx context.Context, request JoinRequest) (*JoinResponse, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to read cluster CA: %w", err)
 	}
-	kubeProxyToken, err := a.Snap.GetKnownToken("system:kube-proxy")
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve kube-proxy token: %w", err)
+	response.CertificateAuthority = ca
+
+	switch {
+	case request.CanHandleCertificateAuth:
+		// client knows how to generate client certificates for authentication
+		response.APIServerAuthMode = APIServerAuthModeCert
+		response.KubeProxyToken = request.ClusterToken
+		if err := a.Snap.AddCertificateRequestToken(fmt.Sprintf("%s-proxy", request.ClusterToken)); err != nil {
+			return nil, fmt.Errorf("failed adding certificate request token for kube-proxy: %w", err)
+		}
+		response.KubeletToken = request.ClusterToken
+		if err := a.Snap.AddCertificateRequestToken(fmt.Sprintf("%s-kubelet", request.ClusterToken)); err != nil {
+			return nil, fmt.Errorf("failed adding certificate request token for kubelet: %w", err)
+		}
+	case snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--token-auth-file") != "":
+		// client does not know how to handle certificate auth, but we have a tokens file
+		response.APIServerAuthMode = APIServerAuthModeToken
+		response.KubeProxyToken, err = a.Snap.GetKnownToken("system:kube-proxy")
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve kube-proxy token: %w", err)
+		}
+		response.KubeletToken, err = a.Snap.GetOrCreateKubeletToken(hostname)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve kubelet token: %w", err)
+		}
+		if err := a.Snap.RestartService(ctx, "apiserver"); err != nil {
+			return nil, fmt.Errorf("failed to restart apiserver service: %w", err)
+		}
+	default:
+		// fail since the client cannot handle x509 authentication and we do not have a token-auth-file
+		return nil, fmt.Errorf("joining this MicroK8s cluster requires x509 authentication. update MicroK8s to version 1.28 or newer and retry the join operation")
 	}
-	kubeletToken, err := a.Snap.GetOrCreateKubeletToken(hostname)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve kubelet token: %w", err)
-	}
-	if err := a.Snap.RestartService(ctx, "apiserver"); err != nil {
-		return nil, fmt.Errorf("failed to restart apiserver service: %w", err)
-	}
-	kubeletArgs, err := a.Snap.ReadServiceArguments("kubelet")
+
+	response.KubeletArgs, err = a.Snap.ReadServiceArguments("kubelet")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read arguments of kubelet service: %w", err)
 	}
 	if hostname != request.HostName {
-		kubeletArgs = fmt.Sprintf("%s\n--hostname-override=%s", kubeletArgs, hostname)
+		response.KubeletArgs = fmt.Sprintf("%s\n--hostname-override=%s", response.KubeletArgs, hostname)
 	}
+	response.HostNameOverride = hostname
 	if err := a.Snap.CreateNoCertsReissueLock(); err != nil {
 		return nil, fmt.Errorf("failed to create lock file to disable certificate reissuing: %w", err)
 	}
-	return &JoinResponse{
-		CertificateAuthority: ca,
-		EtcdEndpoint:         snaputil.GetServiceArgument(a.Snap, "etcd", "--listen-client-urls"),
-		APIServerPort:        snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--secure-port"),
-		KubeProxyToken:       kubeProxyToken,
-		KubeletToken:         kubeletToken,
-		KubeletArgs:          kubeletArgs,
-		HostNameOverride:     hostname,
-		ClusterCIDR:          snaputil.GetServiceArgument(a.Snap, "kube-proxy", "--cluster-cidr"),
-	}, nil
+	return response, nil
 }
