@@ -47,7 +47,11 @@ Role: 0
 		},
 		ClusterTokens:     []string{"worker-token", "control-plane-token"},
 		SelfCallbackToken: "callback-token",
-		CNIYaml:           `some random content. "first-found"`,
+		CNIYaml: `
+- name: IP_AUTODETECTION_METHOD
+  value: "first-found"
+- name: IP6_AUTODETECTION_METHOD
+  value: "first-found"`,
 		KnownTokens: map[string]string{
 			"admin": "admin-token-123",
 		},
@@ -178,7 +182,11 @@ Role: 0
 		},
 		ClusterTokens:     []string{"control-plane-token"},
 		SelfCallbackToken: "callback-token",
-		CNIYaml:           `some random content. "first-found"`,
+		CNIYaml: `
+- name: IP_AUTODETECTION_METHOD
+  value: "first-found"
+- name: IP6_AUTODETECTION_METHOD
+  value: "first-found"`,
 		KnownTokens: map[string]string{
 			"admin": "admin-token-123",
 		},
