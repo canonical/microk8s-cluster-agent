@@ -3,6 +3,7 @@ package snaputil
 import (
 	"context"
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
@@ -22,7 +23,7 @@ func MaybePatchCalicoAutoDetectionMethod(ctx context.Context, s snap.Snap, canRe
 	if err != nil {
 		return fmt.Errorf("failed to read existing cni configuration: %w", err)
 	}
-	if strings.Count(canReachHost, ":") > 0 {
+	if net.ParseIP(canReachHost) != nil && net.ParseIP(canReachHost).To4() == nil {
 		// Address is in IPv6
 		newConfig, err = replaceAfter(config, "IP6_AUTODETECTION_METHOD", "first-found", fmt.Sprintf(`can-reach=%s`, canReachHost))
 		if err != nil {
@@ -50,6 +51,10 @@ func MaybePatchCalicoAutoDetectionMethod(ctx context.Context, s snap.Snap, canRe
 
 // replaceAfter replaces the first occurrence of target after the first occurrence of "after" with replacement.
 func replaceAfter(s, after, target, replacement string) (string, error) {
+	if !strings.Contains(s, after) {
+		return "", fmt.Errorf("after string not found: '%s'", after)
+	}
+
 	afterIndex := strings.Index(s, after)
 	if afterIndex == -1 {
 		return "", fmt.Errorf("string not found: '%s'", after)
