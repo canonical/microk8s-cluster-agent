@@ -20,22 +20,25 @@ import (
 func MaybePatchCalicoAutoDetectionMethod(ctx context.Context, s snap.Snap, canReachHost string, apply bool) error {
 	config, err := s.ReadCNIYaml()
 	var newConfig string
+	var after, target, replacement string
+
 	if err != nil {
 		return fmt.Errorf("failed to read existing cni configuration: %w", err)
 	}
-	if net.ParseIP(canReachHost) != nil && net.ParseIP(canReachHost).To4() == nil {
+
+	if ip := net.ParseIP(canReachHost); ip.To4() == nil {
 		// Address is in IPv6
-		newConfig, err = replaceAfter(config, "IP6_AUTODETECTION_METHOD", "first-found", fmt.Sprintf(`can-reach=%s`, canReachHost))
-		if err != nil {
-			return fmt.Errorf("failed to update cni configuration: %w", err)
-		}
+		after, target, replacement = "IP6_AUTODETECTION_METHOD", "first-found", "can-reach=%s"
 	} else {
 		// Address is in IPv4
-		newConfig, err = replaceAfter(config, "IP_AUTODETECTION_METHOD", "first-found", fmt.Sprintf(`can-reach=%s`, canReachHost))
-		if err != nil {
-			return fmt.Errorf("failed to update cni configuration: %w", err)
-		}
+		after, target, replacement = "IP_AUTODETECTION_METHOD", "first-found", "can-reach=%s"
 	}
+
+	newConfig, err = ReplaceAfter(config, after, target, fmt.Sprintf(replacement, canReachHost))
+	if err != nil {
+		return fmt.Errorf("failed to update %s in CNI configuration: %w", after, err)
+	}
+
 	if newConfig != config {
 		if err := s.WriteCNIYaml([]byte(newConfig)); err != nil {
 			return fmt.Errorf("failed to update cni configuration: %w", err)
@@ -49,8 +52,8 @@ func MaybePatchCalicoAutoDetectionMethod(ctx context.Context, s snap.Snap, canRe
 	return nil
 }
 
-// replaceAfter replaces the first occurrence of target after the first occurrence of "after" with replacement.
-func replaceAfter(s, after, target, replacement string) (string, error) {
+// ReplaceAfter replaces the first occurrence of target after the first occurrence of "after" with replacement.
+func ReplaceAfter(s, after, target, replacement string) (string, error) {
 	if !strings.Contains(s, after) {
 		return "", fmt.Errorf("after string not found: '%s'", after)
 	}
