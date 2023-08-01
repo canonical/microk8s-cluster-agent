@@ -3,10 +3,17 @@ package snaputil
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
-	"strings"
+	"regexp"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
+)
+
+var (
+	// https://regex101.com/r/VHTsvE/1
+	ipAutodetectionMethodRe  = regexp.MustCompile(`(?m)(IP_AUTODETECTION_METHOD(.*\n.*)?)first-found`)
+	ip6AutodetectionMethodRe = regexp.MustCompile(`(?m)(IP6_AUTODETECTION_METHOD(.*\n.*)?)first-found`)
 )
 
 // MaybePatchCalicoAutoDetectionMethod attempts to update the calico cni.yaml to
@@ -16,29 +23,30 @@ import (
 // However, after adding a new node, we want to change this to `can-reach=canReachHost`
 // to mitigate issues with multiple NICs.
 //
+// If canReachHost is an IPv6 address, IP6_AUTODETECTION_METHOD is updated instead.
+//
 // Optionally, the new manifest may be applied using the microk8s-kubectl.wrapper script.
 func MaybePatchCalicoAutoDetectionMethod(ctx context.Context, s snap.Snap, canReachHost string, apply bool) error {
 	config, err := s.ReadCNIYaml()
-	var newConfig string
-	var after, target, replacement string
-
 	if err != nil {
 		return fmt.Errorf("failed to read existing cni configuration: %w", err)
 	}
 
+	var re *regexp.Regexp
 	if ip := net.ParseIP(canReachHost); ip.To4() == nil {
 		// Address is in IPv6
-		after, target, replacement = "IP6_AUTODETECTION_METHOD", "first-found", "can-reach=%s"
+		re = ip6AutodetectionMethodRe
 	} else {
 		// Address is in IPv4
-		after, target, replacement = "IP_AUTODETECTION_METHOD", "first-found", "can-reach=%s"
+		re = ipAutodetectionMethodRe
 	}
 
-	newConfig, err = ReplaceAfter(config, after, target, fmt.Sprintf(replacement, canReachHost))
-	if err != nil {
-		return fmt.Errorf("failed to update %s in CNI configuration: %w", after, err)
+	if re == nil {
+		// NOTE: this should never happen, canReachHost will always be a valid IP address
+		log.Printf("WARNING: %q was not recognised as a valid IPv4 or IPv6 address!", canReachHost)
 	}
 
+	newConfig := re.ReplaceAllString(config, fmt.Sprintf("${1}can-reach=%s", canReachHost))
 	if newConfig != config {
 		if err := s.WriteCNIYaml([]byte(newConfig)); err != nil {
 			return fmt.Errorf("failed to update cni configuration: %w", err)
@@ -50,26 +58,4 @@ func MaybePatchCalicoAutoDetectionMethod(ctx context.Context, s snap.Snap, canRe
 		}
 	}
 	return nil
-}
-
-// ReplaceAfter replaces the first occurrence of target after the first occurrence of "after" with replacement.
-func ReplaceAfter(s, after, target, replacement string) (string, error) {
-	if !strings.Contains(s, after) {
-		return "", fmt.Errorf("after string not found: '%s'", after)
-	}
-
-	afterIndex := strings.Index(s, after)
-	if afterIndex == -1 {
-		return "", fmt.Errorf("string not found: '%s'", after)
-	}
-
-	targetIndex := strings.Index(s[afterIndex:], target)
-	if targetIndex == -1 {
-		return "", fmt.Errorf("string not found after '%s': '%s'", after, target)
-	}
-
-	endIndex := afterIndex + targetIndex
-
-	result := s[:endIndex] + replacement + s[len(target)+endIndex:]
-	return result, nil
 }
