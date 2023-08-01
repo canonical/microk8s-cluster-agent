@@ -3,7 +3,6 @@ package snaputil
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"regexp"
 
@@ -32,18 +31,10 @@ func MaybePatchCalicoAutoDetectionMethod(ctx context.Context, s snap.Snap, canRe
 		return fmt.Errorf("failed to read existing cni configuration: %w", err)
 	}
 
-	var re *regexp.Regexp
-	if ip := net.ParseIP(canReachHost); ip.To4() == nil {
+	re := ipAutodetectionMethodRe
+	if ip := net.ParseIP(canReachHost); ip != nil && ip.To4() == nil {
 		// Address is in IPv6
 		re = ip6AutodetectionMethodRe
-	} else {
-		// Address is in IPv4
-		re = ipAutodetectionMethodRe
-	}
-
-	if re == nil {
-		// NOTE: this should never happen, canReachHost will always be a valid IP address
-		log.Printf("WARNING: %q was not recognised as a valid IPv4 or IPv6 address!", canReachHost)
 	}
 
 	newConfig := re.ReplaceAllString(config, fmt.Sprintf("${1}can-reach=%s", canReachHost))
