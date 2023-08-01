@@ -47,10 +47,11 @@ func MaybePatchCalicoAutoDetectionMethod(ctx context.Context, s snap.Snap, canRe
 	}
 
 	newConfig := re.ReplaceAllString(config, fmt.Sprintf("${1}can-reach=%s", canReachHost))
-	if newConfig != config {
-		if err := s.WriteCNIYaml([]byte(newConfig)); err != nil {
-			return fmt.Errorf("failed to update cni configuration: %w", err)
-		}
+	if newConfig == config {
+		return nil
+	}
+	if err := s.WriteCNIYaml([]byte(newConfig)); err != nil {
+		return fmt.Errorf("failed to update cni configuration: %w", err)
 	}
 	if apply {
 		if err := s.ApplyCNI(ctx); err != nil {

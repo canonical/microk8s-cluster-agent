@@ -16,6 +16,11 @@ import (
 
 // TestJoin tests responses when joining control plane and worker nodes in an existing cluster.
 func TestJoin(t *testing.T) {
+	cni := `
+- name: IP_AUTODETECTION_METHOD
+  value: "first-found"
+- name: IP6_AUTODETECTION_METHOD
+  value: "first-found"`
 	s := &mock.Snap{
 		DqliteLock: true,
 		DqliteCert: "DQLITE CERTIFICATE DATA",
@@ -47,11 +52,7 @@ Role: 0
 		},
 		ClusterTokens:     []string{"worker-token", "control-plane-token"},
 		SelfCallbackToken: "callback-token",
-		CNIYaml: `
-- name: IP_AUTODETECTION_METHOD
-  value: "first-found"
-- name: IP6_AUTODETECTION_METHOD
-  value: "first-found"`,
+		CNIYaml:           cni,
 		KnownTokens: map[string]string{
 			"admin": "admin-token-123",
 		},
@@ -120,6 +121,7 @@ Role: 0
 		// Reset
 		s.ConsumeClusterTokenCalledWith = nil
 		s.ApplyCNICalled = nil
+		s.CNIYaml = cni
 		s.CreateNoCertsReissueLockCalledWith = nil
 
 		resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{
