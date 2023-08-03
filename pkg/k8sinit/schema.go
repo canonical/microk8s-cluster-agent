@@ -158,6 +158,9 @@ type Configuration struct {
 
 	// ExtraCNIEnv is configuration of network such us IPv4/v6 cluster and service CIDRs.
 	ExtraCNIEnv map[string]*string `yaml:"extraCNIEnv"`
+
+	// ExtraFIPSEnv is configuration for MicroK8s to run in FIPS mode.
+	ExtraFIPSEnv map[string]*string `yaml:"extraFIPSEnv"`
 }
 
 // ParseConfiguration tries to parse a Configuration object from YAML data.
@@ -278,6 +281,8 @@ func (c *Configuration) isZero() bool {
 	case len(c.ExtraConfigFiles) > 0:
 		return false
 	case len(c.ExtraCNIEnv) > 0:
+		return false
+	case len(c.ExtraFIPSEnv) > 0:
 		return false
 	}
 	return true

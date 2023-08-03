@@ -332,6 +332,18 @@ func TestComponentConfiguration(t *testing.T) {
 				"flannel-network-mgr-config": {`{"Network": "10.1.0.0/16", "Backend": {"Type": "vxlan"}}`},
 			},
 		},
+		{
+			name: "fips-env",
+			setConfig: func(c *Configuration) {
+				c.ExtraFIPSEnv = map[string]*string{
+					"GOFIPS": &[]string{"1"}[0],
+				}
+			},
+			expectServiceArgs: map[string][]string{
+				"fips-env": {"GOFIPS=1\n"},
+			},
+			expectServiceRestart: []string{"kubelite", "k8s-dqlite", "cluster-agent"},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, preInit := range []bool{false, true} {
