@@ -23,7 +23,7 @@ func TestParse(t *testing.T) {
 			name: "full.yaml",
 			expectConfiguration: k8sinit.MultiPartConfiguration{
 				Parts: []*k8sinit.Configuration{{
-					Version: "0.1.0",
+					Version: "0.2.0",
 					ExtraSANs: &[]string{
 						"10.10.10.10",
 						"microk8s.example.com",

@@ -15,7 +15,7 @@ import (
 
 var (
 	minimumConfigFileVersionRequired  = version.MustParseSemantic("0.1.0")
-	maximumConfigFileVersionSupported = version.MustParseSemantic("0.1.0")
+	maximumConfigFileVersionSupported = version.MustParseSemantic("0.2.0")
 
 	// errEmptyConfig is an ignorable error when parsing empty YAML documents
 	errEmptyConfig = fmt.Errorf("empty configuration object")
