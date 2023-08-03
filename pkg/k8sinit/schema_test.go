@@ -85,6 +85,9 @@ func TestParse(t *testing.T) {
 						"IPv4_CLUSTER_CIDR": &[]string{"10.2.0.0/16"}[0],
 						"IPv4_SERVICE_CIDR": &[]string{"10.153.183.0/24"}[0],
 					},
+					ExtraFIPSEnv: map[string]*string{
+						"GOFIPS": &[]string{"1"}[0],
+					},
 				}},
 			},
 		},
