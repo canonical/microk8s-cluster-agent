@@ -163,8 +163,10 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 	}
 
 	a.calicoMu.Lock()
-	if err := snaputil.MaybePatchCalicoAutoDetectionMethod(ctx, a.Snap, remoteIP, true); err != nil {
-		log.Printf("WARNING: failed to update cni configuration: %q", err)
+	if _, err := a.Snap.ReadCNIYaml(); err == nil {
+		if err := snaputil.MaybePatchCalicoAutoDetectionMethod(ctx, a.Snap, remoteIP, true); err != nil {
+			log.Printf("WARNING: failed to update cni configuration: %q", err)
+		}
 	}
 	a.calicoMu.Unlock()
 
