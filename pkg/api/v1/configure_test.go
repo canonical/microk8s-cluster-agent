@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	v1 "github.com/canonical/microk8s-cluster-agent/pkg/api/v1"
+	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap/mock"
-	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
 )
 
 func TestConfigure(t *testing.T) {
@@ -73,7 +73,7 @@ func TestConfigure(t *testing.T) {
 			}
 			for serviceName, expectedArguments := range tc.expectedArguments {
 				for key, expectedValue := range expectedArguments {
-					if value := snaputil.GetServiceArgument(s, serviceName, key); value != expectedValue {
+					if value := snap.GetServiceArgument(s, serviceName, key); value != expectedValue {
 						t.Fatalf("Expected argument %q of service %q to be %q, but it is %q", key, serviceName, expectedValue, value)
 					}
 				}

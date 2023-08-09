@@ -1,4 +1,4 @@
-package snaputil
+package snap
 
 import (
 	"errors"
@@ -6,14 +6,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 )
 
 // GetServiceArgument retrieves the value of a specific argument from the $SNAP_DATA/args/$service file.
 // The argument name should include preceding dashes (e.g. "--secure-port").
 // If any errors occur, or the argument is not present, an empty string is returned.
-func GetServiceArgument(s snap.Snap, serviceName string, argument string) string {
+func GetServiceArgument(s Snap, serviceName string, argument string) string {
 	arguments, err := s.ReadServiceArguments(serviceName)
 	if err != nil {
 		return ""
@@ -37,7 +36,7 @@ func GetServiceArgument(s snap.Snap, serviceName string, argument string) string
 // updateList is a map of key-value pairs. It will replace the argument with the new value (or just append).
 // delete is a list of arguments to remove completely. The argument is removed if present.
 // Returns a boolean whether any of the arguments were changed, as well as any errors that may have occured.
-func UpdateServiceArguments(s snap.Snap, serviceName string, updateList []map[string]string, delete []string) (bool, error) {
+func UpdateServiceArguments(s Snap, serviceName string, updateList []map[string]string, delete []string) (bool, error) {
 	if updateList == nil {
 		updateList = []map[string]string{}
 	}

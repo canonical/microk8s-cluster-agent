@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
+	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 )
 
@@ -148,7 +148,7 @@ func (s *launcherScope) reconcileServiceArgs(ctx context.Context, configFile str
 		}
 	}
 
-	changed, err := snaputil.UpdateServiceArguments(s.launcher.snap, configFile, []map[string]string{updateArgs}, deleteArgs)
+	changed, err := snap.UpdateServiceArguments(s.launcher.snap, configFile, []map[string]string{updateArgs}, deleteArgs)
 	if err != nil {
 		return false, fmt.Errorf("failed to update arguments: %w", err)
 	}
