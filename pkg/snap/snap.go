@@ -423,11 +423,11 @@ func (s *snap) ReadEtcdCertificates() (string, string, string, error) {
 			continue
 		}
 
-		if contents, err := util.ReadFile(certFile); err != nil {
+		contents, err := util.ReadFile(certFile)
+		if err != nil {
 			return "", "", "", fmt.Errorf("failed to read %s: %w", cert.arg, err)
-		} else {
-			*cert.dest = contents
 		}
+		*cert.dest = contents
 	}
 
 	return ca, cert, key, nil
