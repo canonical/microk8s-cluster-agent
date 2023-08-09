@@ -106,4 +106,10 @@ type Snap interface {
 
 	// JoinCluster joins the local node to an existing MicroK8s cluster as a control-plane or worker node.
 	JoinCluster(ctx context.Context, url string, worker bool) error
+
+	// ReadEtcdCertificates returns the certificates (CA, certificate, private key) used by kube-apiserver to connect to etcd.
+	// Empty values are returned for certificates that are not used.
+	// An error is returned if any of the certificates is in use cannot be read.
+	// The values returned by this function match the contents of '--etcd-cafile', '--etcd-certfile', '--etcd-keyfile' kube-apiserver arguments respectively.
+	ReadEtcdCertificates() (ca string, cert string, key string, err error)
 }

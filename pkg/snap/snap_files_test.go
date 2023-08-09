@@ -3,10 +3,12 @@ package snap_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
+	. "github.com/onsi/gomega"
 )
 
 var (
@@ -18,9 +20,14 @@ var (
 	caKey             = "CA KEY DATA"
 	saKey             = "SERVICE ACCOUNT KEY DATA"
 	cniYaml           = "CNI DATA"
+	etcdCa            = "ETCD CA DATA"
+	etcdCrt           = "ETCD CERT DATA"
+	etcdKey           = "ETCD KEY DATA"
 )
 
 func TestFiles(t *testing.T) {
+	g := NewWithT(t)
+
 	// Create test data
 	for file, contents := range map[string]string{
 		"testdata/var/kubernetes/backend/cluster.crt":  dqliteCrt,
@@ -29,15 +36,14 @@ func TestFiles(t *testing.T) {
 		"testdata/var/kubernetes/backend/cluster.yaml": dqliteClusterYaml,
 		"testdata/certs/ca.crt":                        caCrt,
 		"testdata/certs/ca.key":                        caKey,
+		"testdata/certs/etcd-ca.crt":                   etcdCa,
+		"testdata/certs/etcd-client.crt":               etcdCrt,
+		"testdata/certs/etcd-client.key":               etcdKey,
 		"testdata/certs/serviceaccount.key":            saKey,
 		"testdata/args/cni-network/cni.yaml":           cniYaml,
 	} {
-		if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
-			t.Fatalf("Failed to create test directory: %s", err)
-		}
-		if err := os.WriteFile(file, []byte(contents), 0660); err != nil {
-			t.Fatalf("Failed to create test file: %s", err)
-		}
+		g.Expect(os.MkdirAll(filepath.Dir(file), 0755)).To(BeNil())
+		g.Expect(os.WriteFile(file, []byte(contents), 0660)).To(BeNil())
 		defer os.RemoveAll(filepath.Dir(file))
 	}
 
@@ -58,13 +64,10 @@ func TestFiles(t *testing.T) {
 		{name: "CNI", retrieve: s.ReadCNIYaml, expected: cniYaml},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			g := NewWithT(t)
 			v, err := tc.retrieve()
-			if err != nil {
-				t.Fatalf("expected error to be nil, but it was %q instead", err)
-			}
-			if v != tc.expected {
-				t.Fatalf("expected %s to be %q, but it was %q instead", tc.name, tc.expected, v)
-			}
+			g.Expect(err).To(BeNil())
+			g.Expect(v).To(Equal(tc.expected))
 		})
 	}
 
@@ -78,18 +81,63 @@ func TestFiles(t *testing.T) {
 		{name: "WriteCSRConfig", write: s.WriteCSRConfig, file: "testdata/certs/csr.conf.template"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			g := NewWithT(t)
+
 			magicVal := util.NewRandomString(util.Alpha, 10)
-			if err := tc.write([]byte(magicVal)); err != nil {
-				t.Fatalf("expected error to be nil, but it was %q instead", err)
-			}
+			err := tc.write([]byte(magicVal))
+			g.Expect(err).To(BeNil())
 
 			v, err := util.ReadFile(tc.file)
-			if err != nil {
-				t.Fatalf("expected error to be nil, but it was %q instead", err)
-			}
-			if v != magicVal {
-				t.Fatalf("expected contents of %q to be %q, but they were %q instead", tc.file, magicVal, v)
-			}
+			g.Expect(err).To(BeNil())
+			g.Expect(v).To(Equal(magicVal))
 		})
 	}
+
+	t.Run("EtcdCertificates", func(t *testing.T) {
+		for _, tc := range []struct {
+			name           string
+			apiserverArgs  []string
+			expectEtcdCA   string
+			expectEtcdCert string
+			expectEtcdKey  string
+			expectErr      bool
+		}{
+			{
+				name:           "all",
+				apiserverArgs:  []string{"--etcd-cafile=$SNAP_DATA/certs/etcd-ca.crt", "--etcd-certfile=${SNAP_DATA}/certs/etcd-client.crt", `--etcd-keyfile="testdata/certs/etcd-client.key"`},
+				expectEtcdCA:   etcdCa,
+				expectEtcdCert: etcdCrt,
+				expectEtcdKey:  etcdKey,
+			},
+			{
+				name: "none",
+			},
+			{
+				name:          "only-ca",
+				apiserverArgs: []string{"--etcd-cafile=$SNAP_DATA/certs/etcd-ca.crt"},
+				expectEtcdCA:  etcdCa,
+			},
+			{
+				name:          "missing-file",
+				apiserverArgs: []string{"--etcd-cafile=$SNAP_DATA/certs/etcd-caa.crt"},
+				expectErr:     true,
+			},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				g := NewWithT(t)
+				g.Expect(os.WriteFile("testdata/args/kube-apiserver", []byte(strings.Join(tc.apiserverArgs, "\n")), 0755)).To(BeNil())
+				defer os.RemoveAll("testdata/args/kube-apiserver")
+
+				ca, crt, key, err := s.ReadEtcdCertificates()
+				g.Expect(ca).To(Equal(tc.expectEtcdCA))
+				g.Expect(crt).To(Equal(tc.expectEtcdCert))
+				g.Expect(key).To(Equal(tc.expectEtcdKey))
+				if tc.expectErr {
+					g.Expect(err).NotTo(BeNil())
+				} else {
+					g.Expect(err).To(BeNil())
+				}
+			})
+		}
+	})
 }
