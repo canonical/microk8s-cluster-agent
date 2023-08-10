@@ -67,37 +67,34 @@ func (s *launcherScope) applyPart(ctx context.Context, c *Configuration) error {
 	}
 
 	for _, item := range []struct {
-		configFile      string
-		restartServices []string
-		args            map[string]*string
+		configFile     string
+		restartService string
+		args           map[string]*string
 	}{
-		{configFile: "kube-apiserver", restartServices: []string{"kubelite"}, args: c.ExtraKubeAPIServerArgs},
-		{configFile: "kubelet", restartServices: []string{"kubelite"}, args: c.ExtraKubeletArgs},
-		{configFile: "kube-proxy", restartServices: []string{"kubelite"}, args: c.ExtraKubeProxyArgs},
-		{configFile: "kube-controller-manager", restartServices: []string{"kubelite"}, args: c.ExtraKubeControllerManagerArgs},
-		{configFile: "kube-scheduler", restartServices: []string{"kubelite"}, args: c.ExtraKubeSchedulerArgs},
-		{configFile: "kubelite-env", restartServices: []string{"kubelite"}, args: c.ExtraKubeliteEnv},
-		{configFile: "containerd", restartServices: []string{"containerd"}, args: c.ExtraContainerdArgs},
-		{configFile: "containerd-env", restartServices: []string{"containerd"}, args: c.ExtraContainerdEnv},
-		{configFile: "k8s-dqlite", restartServices: []string{"k8s-dqlite"}, args: c.ExtraDqliteArgs},
-		{configFile: "k8s-dqlite-env", restartServices: []string{"k8s-dqlite"}, args: c.ExtraDqliteEnv},
-		{configFile: "cluster-agent", restartServices: []string{"cluster-agent"}, args: c.ExtraMicroK8sClusterAgentArgs},
-		{configFile: "cluster-agent-env", restartServices: []string{"cluster-agent"}, args: c.ExtraMicroK8sClusterAgentEnv},
-		{configFile: "apiserver-proxy", restartServices: []string{"apiserver-proxy"}, args: c.ExtraMicroK8sAPIServerProxyArgs},
-		{configFile: "apiserver-proxy-env", restartServices: []string{"apiserver-proxy"}, args: c.ExtraMicroK8sAPIServerProxyEnv},
-		{configFile: "etcd", restartServices: []string{"etcd"}, args: c.ExtraEtcdArgs},
-		{configFile: "etcd-env", restartServices: []string{"etcd"}, args: c.ExtraEtcdEnv},
-		{configFile: "flanneld", restartServices: []string{"flanneld"}, args: c.ExtraFlanneldArgs},
-		{configFile: "flanneld-env", restartServices: []string{"flanneld"}, args: c.ExtraFlanneldEnv},
-		{configFile: "cni-env", args: c.ExtraCNIEnv},
-		{configFile: "fips-env", restartServices: []string{"kubelite", "k8s-dqlite", "cluster-agent"}, args: c.ExtraFIPSEnv},
+		{configFile: "kube-apiserver", restartService: "kubelite", args: c.ExtraKubeAPIServerArgs},
+		{configFile: "kubelet", restartService: "kubelite", args: c.ExtraKubeletArgs},
+		{configFile: "kube-proxy", restartService: "kubelite", args: c.ExtraKubeProxyArgs},
+		{configFile: "kube-controller-manager", restartService: "kubelite", args: c.ExtraKubeControllerManagerArgs},
+		{configFile: "kube-scheduler", restartService: "kubelite", args: c.ExtraKubeSchedulerArgs},
+		{configFile: "kubelite-env", restartService: "kubelite", args: c.ExtraKubeliteEnv},
+		{configFile: "containerd", restartService: "containerd", args: c.ExtraContainerdArgs},
+		{configFile: "containerd-env", restartService: "containerd", args: c.ExtraContainerdEnv},
+		{configFile: "k8s-dqlite", restartService: "k8s-dqlite", args: c.ExtraDqliteArgs},
+		{configFile: "k8s-dqlite-env", restartService: "k8s-dqlite", args: c.ExtraDqliteEnv},
+		{configFile: "cluster-agent", restartService: "cluster-agent", args: c.ExtraMicroK8sClusterAgentArgs},
+		{configFile: "cluster-agent-env", restartService: "cluster-agent", args: c.ExtraMicroK8sClusterAgentEnv},
+		{configFile: "apiserver-proxy", restartService: "apiserver-proxy", args: c.ExtraMicroK8sAPIServerProxyArgs},
+		{configFile: "apiserver-proxy-env", restartService: "apiserver-proxy", args: c.ExtraMicroK8sAPIServerProxyEnv},
+		{configFile: "etcd", restartService: "etcd", args: c.ExtraEtcdArgs},
+		{configFile: "etcd-env", restartService: "etcd", args: c.ExtraEtcdEnv},
+		{configFile: "flanneld", restartService: "flanneld", args: c.ExtraFlanneldArgs},
+		{configFile: "flanneld-env", restartService: "flanneld", args: c.ExtraFlanneldEnv},
+		{configFile: "cni-env", restartService: "", args: c.ExtraCNIEnv},
 	} {
 		if changed, err := s.reconcileServiceArgs(ctx, item.configFile, item.args); err != nil {
 			return fmt.Errorf("failed to reconcile config file %q: %w", item.configFile, err)
-		} else if changed {
-			for _, service := range item.restartServices {
-				s.mustRestartServices[service] = struct{}{}
-			}
+		} else if changed && item.restartService != "" {
+			s.mustRestartServices[item.restartService] = struct{}{}
 		}
 	}
 
