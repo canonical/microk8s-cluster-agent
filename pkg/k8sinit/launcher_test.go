@@ -149,10 +149,6 @@ func TestComponentConfiguration(t *testing.T) {
 				c.ExtraKubeSchedulerArgs = map[string]*string{
 					"--KubeScheduler-arg": &[]string{"value"}[0],
 				}
-				c.ExtraCNIEnv = map[string]*string{
-					"IPv4_SUPPORT":      &[]string{"true"}[0],
-					"IPv4_CLUSTER_CIDR": &[]string{"10.2.0.0/16"}[0],
-				}
 			},
 			expectServiceArgs: map[string][]string{
 				"kubelet":                 {"--Kubelet-arg=value\n"},
@@ -331,6 +327,30 @@ func TestComponentConfiguration(t *testing.T) {
 			expectServiceArgs: map[string][]string{
 				"flannel-network-mgr-config": {`{"Network": "10.1.0.0/16", "Backend": {"Type": "vxlan"}}`},
 			},
+		},
+		{
+			name: "cni-env",
+			setConfig: func(c *Configuration) {
+				c.ExtraCNIEnv = map[string]*string{
+					"IPv4_SUPPORT":      &[]string{"true"}[0],
+					"IPv4_CLUSTER_CIDR": &[]string{"10.2.0.0/16"}[0],
+				}
+			},
+			expectServiceArgs: map[string][]string{
+				"cni-env": {"IPv4_SUPPORT=true\n", "IPv4_CLUSTER_CIDR=10.2.0.0/16\n"},
+			},
+		},
+		{
+			name: "fips-env",
+			setConfig: func(c *Configuration) {
+				c.ExtraFIPSEnv = map[string]*string{
+					"GOFIPS": &[]string{"1"}[0],
+				}
+			},
+			expectServiceArgs: map[string][]string{
+				"fips-env": {"GOFIPS=1\n"},
+			},
+			expectServiceRestart: []string{"kubelite", "k8s-dqlite", "cluster-agent"},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

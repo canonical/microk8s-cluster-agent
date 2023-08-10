@@ -23,7 +23,7 @@ func TestParse(t *testing.T) {
 			name: "full.yaml",
 			expectConfiguration: k8sinit.MultiPartConfiguration{
 				Parts: []*k8sinit.Configuration{{
-					Version: "0.1.0",
+					Version: "0.2.0",
 					ExtraSANs: &[]string{
 						"10.10.10.10",
 						"microk8s.example.com",
@@ -84,6 +84,9 @@ func TestParse(t *testing.T) {
 						"IPv4_SUPPORT":      &[]string{"true"}[0],
 						"IPv4_CLUSTER_CIDR": &[]string{"10.2.0.0/16"}[0],
 						"IPv4_SERVICE_CIDR": &[]string{"10.153.183.0/24"}[0],
+					},
+					ExtraFIPSEnv: map[string]*string{
+						"GOFIPS": &[]string{"1"}[0],
 					},
 				}},
 			},
