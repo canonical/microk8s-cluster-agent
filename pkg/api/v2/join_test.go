@@ -50,7 +50,7 @@ Role: 0
 			"kube-proxy":     "--cluster-cidr 10.1.0.0/16",
 			"cluster-agent":  "--bind=0.0.0.0:25000",
 		},
-		ClusterTokens:     []string{"worker-token", "control-plane-token"},
+		ClusterTokens:     []string{"worker-token", "control-plane-token", "valid-token-for-auth-test"},
 		SelfCallbackToken: "callback-token",
 		CNIYaml:           cni,
 		KnownTokens: map[string]string{
@@ -61,6 +61,7 @@ Role: 0
 		Snap: s,
 		LookupIP: func(hostname string) ([]net.IP, error) {
 			return map[string][]net.IP{
+				"test-no-cert":       {{10, 10, 10, 14}},
 				"test-control-plane": {{10, 10, 10, 13}},
 				"test-worker":        {{10, 10, 10, 12}},
 			}[hostname], nil
@@ -81,16 +82,35 @@ Role: 0
 		g.Expect(s.ConsumeClusterTokenCalledWith).To(ConsistOf("invalid-token"))
 	})
 
+	t.Run("NoCertAuthNoTokensFile", func(t *testing.T) {
+		g := NewWithT(t)
+		saveArgs := s.ServiceArguments["kube-apiserver"]
+		s.ServiceArguments["kube-apiserver"] = "--kubelet-preferred-address-types=InternalIP\n--secure-port 16443"
+		resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{
+			ClusterToken:     "valid-token-for-auth-test",
+			ClusterAgentPort: "25000",
+			RemoteHostName:   "test-no-cert-auth",
+			HostPort:         "10.10.10.10:25000",
+			RemoteAddress:    "10.10.10.14:31312",
+		})
+		g.Expect(resp).To(BeNil())
+		g.Expect(err).NotTo(BeNil())
+		g.Expect(err.Error()).To(ContainSubstring("requires x509 authentication"))
+		s.ServiceArguments["kube-apiserver"] = saveArgs
+	})
+
 	t.Run("ControlPlane", func(t *testing.T) {
 		g := NewWithT(t)
 		s.ConsumeClusterTokenCalledWith = nil
+		s.CreateNoCertsReissueLockCalledWith = nil
 		resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{
-			ClusterToken:     "control-plane-token",
-			RemoteHostName:   "test-control-plane",
-			ClusterAgentPort: "25000",
-			HostPort:         "10.10.10.10:25000",
-			RemoteAddress:    "10.10.10.13:41532",
-			WorkerOnly:       false,
+			ClusterToken:             "control-plane-token",
+			RemoteHostName:           "test-control-plane",
+			ClusterAgentPort:         "25000",
+			HostPort:                 "10.10.10.10:25000",
+			RemoteAddress:            "10.10.10.13:41532",
+			WorkerOnly:               false,
+			CanHandleCertificateAuth: true,
 		})
 		g.Expect(err).To(BeNil())
 		g.Expect(resp).NotTo(BeNil())
