@@ -85,11 +85,11 @@ Role: 0
 	t.Run("NoCertAuthNoTokensFile", func(t *testing.T) {
 		g := NewWithT(t)
 		saveArgs := s.ServiceArguments["kube-apiserver"]
-		s.ServiceArguments["kube-apiserver"] = "--kubelet-preferred-address-types=InternalIP\n--secure-port 16443"
+		s.ServiceArguments["kube-apiserver"] = "--etcd-servers=${SNAP_DATA}/var/kubernetes/backend/kine.sock:12379\n--secure-port 16443"
 		resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{
 			ClusterToken:     "valid-token-for-auth-test",
 			ClusterAgentPort: "25000",
-			RemoteHostName:   "test-no-cert-auth",
+			RemoteHostName:   "test-no-cert",
 			HostPort:         "10.10.10.10:25000",
 			RemoteAddress:    "10.10.10.14:31312",
 		})
@@ -383,12 +383,13 @@ func TestJoinCustomEtcdEndpoints(t *testing.T) {
 	t.Run("NotSupportedByClient", func(t *testing.T) {
 		g := NewWithT(t)
 		resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{
-			ClusterToken:     "token-1",
-			RemoteHostName:   "test-1",
-			ClusterAgentPort: "25000",
-			HostPort:         "10.10.10.10:25000",
-			RemoteAddress:    "10.10.10.11:41532",
-			WorkerOnly:       false,
+			ClusterToken:             "token-1",
+			RemoteHostName:           "test-1",
+			ClusterAgentPort:         "25000",
+			HostPort:                 "10.10.10.10:25000",
+			RemoteAddress:            "10.10.10.11:41532",
+			WorkerOnly:               false,
+			CanHandleCertificateAuth: true,
 		})
 		g.Expect(err).NotTo(BeNil())
 		g.Expect(resp).To(BeNil())
@@ -397,13 +398,14 @@ func TestJoinCustomEtcdEndpoints(t *testing.T) {
 	t.Run("SupportedByClient", func(t *testing.T) {
 		g := NewWithT(t)
 		resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{
-			ClusterToken:        "token-2",
-			RemoteHostName:      "test-2",
-			ClusterAgentPort:    "25000",
-			HostPort:            "10.10.10.10:25000",
-			RemoteAddress:       "10.10.10.12:41532",
-			WorkerOnly:          false,
-			CanHandleCustomEtcd: true,
+			ClusterToken:             "token-2",
+			RemoteHostName:           "test-2",
+			ClusterAgentPort:         "25000",
+			HostPort:                 "10.10.10.10:25000",
+			RemoteAddress:            "10.10.10.12:41532",
+			WorkerOnly:               false,
+			CanHandleCustomEtcd:      true,
+			CanHandleCertificateAuth: true,
 		})
 		g.Expect(err).To(BeNil())
 		g.Expect(resp.EtcdServers).To(Equal("https://etcd1:2379,https://etcd2:2379"))
