@@ -37,6 +37,8 @@ type JoinRequest struct {
 	HostPort string `json:"-"`
 	// RemoteAddress is the remote address from which the join request originates. This is retrieved directly from the *http.Request object.
 	RemoteAddress string `json:"-"`
+	// CanHandleCertificateAuth is set by joining nodes that know how to generate x509 certificates for cluster authentication instead of using auth tokens.
+	CanHandleCertificateAuth bool `json:"can_handle_x509_auth"`
 }
 
 // JoinResponse is the response message for the v2/join API endpoint.
@@ -205,12 +207,14 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve service account key: %w", err)
 		}
 
-		hasTokenAuth := snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--token-auth-file") != ""
-		if hasTokenAuth {
+		switch {
+		case snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--token-auth-file") != "":
 			response.AdminToken, err = a.Snap.GetKnownToken("admin")
 			if err != nil {
 				return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve token for admin user: %w", err)
 			}
+		case !req.CanHandleCertificateAuth:
+			return nil, http.StatusInternalServerError, fmt.Errorf("joining this MicroK8s cluster requires x509 authentication. update MicroK8s to version 1.28 or newer and retry the join operation")
 		}
 		response.DqliteClusterCertificate, err = a.Snap.ReadDqliteCert()
 		if err != nil {
