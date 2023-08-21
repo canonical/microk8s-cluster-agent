@@ -404,4 +404,33 @@ func (s *snap) JoinCluster(ctx context.Context, url string, worker bool) error {
 	return nil
 }
 
+func (s *snap) ReadEtcdCertificates() (string, string, string, error) {
+	var ca, cert, key string
+	for _, cert := range []struct {
+		dest *string
+		arg  string
+	}{
+		{&ca, "--etcd-cafile"},
+		{&cert, "--etcd-certfile"},
+		{&key, "--etcd-keyfile"},
+	} {
+		certFile := GetServiceArgument(s, "kube-apiserver", cert.arg)
+		certFile = strings.Trim(certFile, "\"")
+		certFile = strings.ReplaceAll(certFile, "$SNAP_DATA", s.snapDataDir)
+		certFile = strings.ReplaceAll(certFile, "${SNAP_DATA}", s.snapDataDir)
+
+		if certFile == "" {
+			continue
+		}
+
+		contents, err := util.ReadFile(certFile)
+		if err != nil {
+			return "", "", "", fmt.Errorf("failed to read %s: %w", cert.arg, err)
+		}
+		*cert.dest = contents
+	}
+
+	return ca, cert, key, nil
+}
+
 var _ Snap = &snap{}

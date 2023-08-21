@@ -1,12 +1,12 @@
-package snaputil_test
+package snap_test
 
 import (
 	"fmt"
 	"os"
 	"testing"
 
+	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap/mock"
-	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
 
 	. "github.com/onsi/gomega"
 )
@@ -48,7 +48,7 @@ func TestGetServiceArgument(t *testing.T) {
 		t.Run(fmt.Sprintf("%s/%s", tc.service, tc.key), func(t *testing.T) {
 			g := NewWithT(t)
 
-			g.Expect(snaputil.GetServiceArgument(s, tc.service, tc.key)).To(Equal(tc.expectedValue))
+			g.Expect(snap.GetServiceArgument(s, tc.service, tc.key)).To(Equal(tc.expectedValue))
 		})
 	}
 }
@@ -69,7 +69,7 @@ func TestUpdateServiceArguments(t *testing.T) {
 			Snap: mock.Snap{},
 		}
 
-		changed, err := snaputil.UpdateServiceArguments(s, "service", []map[string]string{{"--key": "value"}}, nil)
+		changed, err := snap.UpdateServiceArguments(s, "service", []map[string]string{{"--key": "value"}}, nil)
 		g.Expect(err).To(BeNil())
 		g.Expect(changed).To(BeTrue())
 
@@ -172,17 +172,17 @@ func TestUpdateServiceArguments(t *testing.T) {
 				},
 			}
 
-			changed, err := snaputil.UpdateServiceArguments(s, "service", tc.update, tc.delete)
+			changed, err := snap.UpdateServiceArguments(s, "service", tc.update, tc.delete)
 			g.Expect(err).To(BeNil())
 			g.Expect(changed).To(Equal(tc.expectedChange))
 
 			for key, expectedValue := range tc.expectedValues {
-				g.Expect(snaputil.GetServiceArgument(s, "service", key)).To(Equal(expectedValue))
+				g.Expect(snap.GetServiceArgument(s, "service", key)).To(Equal(expectedValue))
 			}
 
 			t.Run("Reapply", func(t *testing.T) {
 				g := NewWithT(t)
-				changed, err := snaputil.UpdateServiceArguments(s, "service", tc.update, tc.delete)
+				changed, err := snap.UpdateServiceArguments(s, "service", tc.update, tc.delete)
 				g.Expect(err).To(BeNil())
 				g.Expect(changed).To(BeFalse())
 			})

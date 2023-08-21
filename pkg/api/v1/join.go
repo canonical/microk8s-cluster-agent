@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
+	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 )
 
@@ -61,9 +61,9 @@ type JoinResponse struct {
 // Join implements "POST /CLUSTER_API_V1/join".
 func (a *API) Join(ctx context.Context, request JoinRequest) (*JoinResponse, error) {
 	response := &JoinResponse{
-		EtcdEndpoint:  snaputil.GetServiceArgument(a.Snap, "etcd", "--listen-client-urls"),
-		APIServerPort: snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--secure-port"),
-		ClusterCIDR:   snaputil.GetServiceArgument(a.Snap, "kube-proxy", "--cluster-cidr"),
+		EtcdEndpoint:  snap.GetServiceArgument(a.Snap, "etcd", "--listen-client-urls"),
+		APIServerPort: snap.GetServiceArgument(a.Snap, "kube-apiserver", "--secure-port"),
+		ClusterCIDR:   snap.GetServiceArgument(a.Snap, "kube-proxy", "--cluster-cidr"),
 	}
 
 	if !a.Snap.ConsumeClusterToken(request.ClusterToken) {
@@ -102,7 +102,7 @@ func (a *API) Join(ctx context.Context, request JoinRequest) (*JoinResponse, err
 		if err := a.Snap.AddCertificateRequestToken(fmt.Sprintf("%s-kubelet", request.ClusterToken)); err != nil {
 			return nil, fmt.Errorf("failed adding certificate request token for kubelet: %w", err)
 		}
-	case snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--token-auth-file") != "":
+	case snap.GetServiceArgument(a.Snap, "kube-apiserver", "--token-auth-file") != "":
 		// client does not know how to handle certificate auth, but we have a tokens file
 		response.APIServerAuthMode = APIServerAuthModeToken
 		response.KubeProxyToken, err = a.Snap.GetKnownToken("system:kube-proxy")

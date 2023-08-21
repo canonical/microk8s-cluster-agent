@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
 	"github.com/canonical/microk8s-cluster-agent/pkg/util"
 )
@@ -33,6 +34,8 @@ type JoinRequest struct {
 	ClusterAgentPort string `json:"port"`
 	// WorkerOnly is true when joining a worker-only node.
 	WorkerOnly WorkerOnlyField `json:"worker"`
+	// CanHandleCustomEtcd is set by joining nodes that know how to deal with custom etcd endpoints being used by the kube-apiserver.
+	CanHandleCustomEtcd bool `json:"can_handle_custom_etcd"`
 	// HostPort is the hostname and port that accepted the request. This is retrieved directly from the *http.Request object.
 	HostPort string `json:"-"`
 	// RemoteAddress is the remote address from which the join request originates. This is retrieved directly from the *http.Request object.
@@ -79,6 +82,18 @@ type JoinResponse struct {
 	ControlPlaneNodes []string `json:"control_plane_nodes"`
 	// ClusterCIDR is the cidr that is used by the cluster, defined in kube-proxy args.
 	ClusterCIDR string `json:"cluster_cidr,omitempty"`
+	// EtcdServers is the value of the kube-apiserver '--etcd-servers' argument, containing the list of etcd endpoints to use.
+	// This is only included in the response when a custom data store is configured.
+	EtcdServers string `json:"etcd_servers,omitempty"`
+	// EtcdCertificateAuthority is the contents of the file from the kube-apiserver '--etcd-cafile' argument, containing a CA for connecting to the etcd servers. Will be empty if not using TLS.
+	// This is only included in the response when a custom data store is configured.
+	EtcdCertificateAuthority string `json:"etcd_ca,omitempty"`
+	// EtcdClientCertificate is the contents of the file from the kube-apiserver '--etcd-certfile' argument, containing a certificate for connecting to the etcd servers. Will be empty if not using TLS.
+	// This is only included in the response when a custom data store is configured.
+	EtcdClientCertificate string `json:"etcd_cert,omitempty"`
+	// EtcdClientKey is the contents of the file from the kube-apiserver '--etcd-keyfile' argument, containing a private key for connecting to the etcd servers. Will be empty if not using TLS.
+	// This is only included in the response when a custom data store is configured.
+	EtcdClientKey string `json:"etcd_key,omitempty"`
 }
 
 // Join implements "POST v2/join".
@@ -92,7 +107,7 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 	}
 
 	// Check cluster agent ports.
-	clusterAgentBind := snaputil.GetServiceArgument(a.Snap, "cluster-agent", "--bind")
+	clusterAgentBind := snap.GetServiceArgument(a.Snap, "cluster-agent", "--bind")
 	_, port, _ := net.SplitHostPort(clusterAgentBind)
 	if port != req.ClusterAgentPort {
 		return nil, http.StatusBadGateway, fmt.Errorf("the port of the cluster agent port has to be set to %s", port)
@@ -110,45 +125,57 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 		return nil, http.StatusBadRequest, fmt.Errorf("the hostname (%s) of the joining node does not resolve to the IP %q. Refusing join", req.RemoteHostName, remoteIP)
 	}
 
-	// Check node is not in cluster already.
-	a.dqliteMu.Lock()
-	dqliteCluster, err := snaputil.WaitForDqliteCluster(ctx, a.Snap, func(c snaputil.DqliteCluster) (bool, error) {
-		return len(c) >= 1, nil
-	})
-	if err != nil {
-		a.dqliteMu.Unlock()
-		return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster nodes: %w", err)
-	}
-	for _, node := range dqliteCluster {
-		if strings.HasPrefix(node.Address, remoteIP+":") {
-			a.dqliteMu.Unlock()
-			return nil, http.StatusGatewayTimeout, fmt.Errorf("the joining node (%s) is already known to dqlite", remoteIP)
-		}
-	}
+	kubeAPIServerUsesDqlite := strings.Contains(snap.GetServiceArgument(a.Snap, "kube-apiserver", "--etcd-servers"), "/var/kubernetes/backend/kine.sock:12379")
 
-	// Update dqlite cluster if needed
-	if len(dqliteCluster) == 1 && strings.HasPrefix(dqliteCluster[0].Address, "127.0.0.1:") {
-		newDqliteBindAddress, err := a.findMatchingBindAddress(req.HostPort)
-		if err != nil {
-			a.dqliteMu.Unlock()
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed to find matching dqlite bind address for %v: %w", req.HostPort, err)
-		}
+	// Handle datastore updates
+	switch {
+	case kubeAPIServerUsesDqlite:
+		// FIXME(neoaggelos): move this logic into a snaputil.MaybeUpdateDqliteBindAddress() to cleanup the code a little bit
 
-		if err := snaputil.UpdateDqliteIP(ctx, a.Snap, newDqliteBindAddress); err != nil {
-			a.dqliteMu.Unlock()
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed to update dqlite address to %q: %w", newDqliteBindAddress, err)
-		}
-
-		// Wait for dqlite cluster to come up with new address
-		dqliteCluster, err = snaputil.WaitForDqliteCluster(ctx, a.Snap, func(c snaputil.DqliteCluster) (bool, error) {
-			return len(c) >= 1 && !strings.HasPrefix(c[0].Address, "127.0.0.1:"), nil
+		// Check node is not in cluster already.
+		a.dqliteMu.Lock()
+		dqliteCluster, err := snaputil.WaitForDqliteCluster(ctx, a.Snap, func(c snaputil.DqliteCluster) (bool, error) {
+			return len(c) >= 1, nil
 		})
 		if err != nil {
 			a.dqliteMu.Unlock()
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed waiting for dqlite cluster to come up: %w", err)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster nodes: %w", err)
 		}
+		for _, node := range dqliteCluster {
+			if strings.HasPrefix(node.Address, remoteIP+":") {
+				a.dqliteMu.Unlock()
+				return nil, http.StatusGatewayTimeout, fmt.Errorf("the joining node (%s) is already known to dqlite", remoteIP)
+			}
+		}
+		// Update dqlite cluster if needed
+		if len(dqliteCluster) == 1 && strings.HasPrefix(dqliteCluster[0].Address, "127.0.0.1:") {
+			newDqliteBindAddress, err := a.findMatchingBindAddress(req.HostPort)
+			if err != nil {
+				a.dqliteMu.Unlock()
+				return nil, http.StatusInternalServerError, fmt.Errorf("failed to find matching dqlite bind address for %v: %w", req.HostPort, err)
+			}
+			if err := snaputil.UpdateDqliteIP(ctx, a.Snap, newDqliteBindAddress); err != nil {
+				a.dqliteMu.Unlock()
+				return nil, http.StatusInternalServerError, fmt.Errorf("failed to update dqlite address to %q: %w", newDqliteBindAddress, err)
+			}
+			// Wait for dqlite cluster to come up with new address
+			_, err = snaputil.WaitForDqliteCluster(ctx, a.Snap, func(c snaputil.DqliteCluster) (bool, error) {
+				return len(c) >= 1 && !strings.HasPrefix(c[0].Address, "127.0.0.1:"), nil
+			})
+			if err != nil {
+				a.dqliteMu.Unlock()
+				return nil, http.StatusInternalServerError, fmt.Errorf("failed waiting for dqlite cluster to come up: %w", err)
+			}
+		}
+		a.dqliteMu.Unlock()
+
+	case req.CanHandleCustomEtcd:
+		// no-op
+
+	default:
+		// fail since this node is using a custom datastore and the client cannot handle it properly.
+		return nil, http.StatusInternalServerError, fmt.Errorf("this MicroK8s cluster uses a custom etcd endpoint. update MicroK8s to version 1.28 or newer and retry the join operation")
 	}
-	a.dqliteMu.Unlock()
 
 	callbackToken, err := a.Snap.GetOrCreateSelfCallbackToken()
 	if err != nil {
@@ -176,11 +203,11 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 	response := &JoinResponse{
 		CertificateAuthority:       ca,
 		CallbackToken:              callbackToken,
-		APIServerPort:              snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--secure-port"),
-		APIServerAuthorizationMode: snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--authorization-mode"),
+		APIServerPort:              snap.GetServiceArgument(a.Snap, "kube-apiserver", "--secure-port"),
+		APIServerAuthorizationMode: snap.GetServiceArgument(a.Snap, "kube-apiserver", "--authorization-mode"),
 		HostNameOverride:           remoteIP,
 		KubeletArgs:                kubeletArgs,
-		ClusterCIDR:                snaputil.GetServiceArgument(a.Snap, "kube-proxy", "--cluster-cidr"),
+		ClusterCIDR:                snap.GetServiceArgument(a.Snap, "kube-proxy", "--cluster-cidr"),
 	}
 
 	if req.WorkerOnly {
@@ -208,7 +235,7 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 		}
 
 		switch {
-		case snaputil.GetServiceArgument(a.Snap, "kube-apiserver", "--token-auth-file") != "":
+		case snap.GetServiceArgument(a.Snap, "kube-apiserver", "--token-auth-file") != "":
 			response.AdminToken, err = a.Snap.GetKnownToken("admin")
 			if err != nil {
 				return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve token for admin user: %w", err)
@@ -216,21 +243,41 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 		case !req.CanHandleCertificateAuth:
 			return nil, http.StatusInternalServerError, fmt.Errorf("joining this MicroK8s cluster requires x509 authentication. update MicroK8s to version 1.28 or newer and retry the join operation")
 		}
-		response.DqliteClusterCertificate, err = a.Snap.ReadDqliteCert()
-		if err != nil {
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster certificate: %w", err)
-		}
-		response.DqliteClusterKey, err = a.Snap.ReadDqliteKey()
-		if err != nil {
-			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster key: %w", err)
-		}
-		voters := make([]string, 0, len(dqliteCluster))
-		for _, node := range dqliteCluster {
-			if node.NodeRole == 0 {
-				voters = append(voters, node.Address)
+
+		// add datastore arguments
+		switch {
+		case kubeAPIServerUsesDqlite:
+			dqliteCluster, err := snaputil.WaitForDqliteCluster(ctx, a.Snap, func(c snaputil.DqliteCluster) (bool, error) {
+				return len(c) >= 1, nil
+			})
+			if err != nil {
+				return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster nodes: %w", err)
 			}
+			response.DqliteClusterCertificate, err = a.Snap.ReadDqliteCert()
+			if err != nil {
+				return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster certificate: %w", err)
+			}
+			response.DqliteClusterKey, err = a.Snap.ReadDqliteKey()
+			if err != nil {
+				return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster key: %w", err)
+			}
+			voters := make([]string, 0, len(dqliteCluster))
+			for _, node := range dqliteCluster {
+				if node.NodeRole == 0 {
+					voters = append(voters, node.Address)
+				}
+			}
+			response.DqliteVoterNodes = voters
+		case req.CanHandleCustomEtcd:
+			response.EtcdServers = snap.GetServiceArgument(a.Snap, "kube-apiserver", "--etcd-servers")
+			response.EtcdCertificateAuthority, response.EtcdClientCertificate, response.EtcdClientKey, err = a.Snap.ReadEtcdCertificates()
+			if err != nil {
+				return nil, http.StatusInternalServerError, fmt.Errorf("failed to read etcd certificates: %w", err)
+			}
+		default:
+			// fail since this node is using a custom datastore and the client cannot handle it properly.
+			return nil, http.StatusInternalServerError, fmt.Errorf("this MicroK8s cluster uses a custom etcd endpoint. update MicroK8s to version 1.28 or newer and retry the join operation")
 		}
-		response.DqliteVoterNodes = voters
 	}
 
 	return response, http.StatusOK, nil

@@ -46,7 +46,7 @@ Role: 0
 		ServiceAccountKey: "SERVICE ACCOUNT KEY DATA",
 		ServiceArguments: map[string]string{
 			"kubelet":        "kubelet arguments\n",
-			"kube-apiserver": "--secure-port 16443\n--authorization-mode=Node,RBAC",
+			"kube-apiserver": "--secure-port 16443\n--authorization-mode=Node,RBAC\n--etcd-servers=${SNAP_DATA}/var/kubernetes/backend/kine.sock:12379\n",
 			"kube-proxy":     "--cluster-cidr 10.1.0.0/16",
 			"cluster-agent":  "--bind=0.0.0.0:25000",
 		},
@@ -85,11 +85,11 @@ Role: 0
 	t.Run("NoCertAuthNoTokensFile", func(t *testing.T) {
 		g := NewWithT(t)
 		saveArgs := s.ServiceArguments["kube-apiserver"]
-		s.ServiceArguments["kube-apiserver"] = "--kubelet-preferred-address-types=InternalIP\n--secure-port 16443"
+		s.ServiceArguments["kube-apiserver"] = "--etcd-servers=${SNAP_DATA}/var/kubernetes/backend/kine.sock:12379\n--secure-port 16443"
 		resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{
 			ClusterToken:     "valid-token-for-auth-test",
 			ClusterAgentPort: "25000",
-			RemoteHostName:   "test-no-cert-auth",
+			RemoteHostName:   "test-no-cert",
 			HostPort:         "10.10.10.10:25000",
 			RemoteAddress:    "10.10.10.14:31312",
 		})
@@ -198,7 +198,7 @@ Role: 0
 		ServiceAccountKey: "SERVICE ACCOUNT KEY DATA",
 		ServiceArguments: map[string]string{
 			"kubelet":        "kubelet arguments\n",
-			"kube-apiserver": "--secure-port 16443\n--authorization-mode=Node\n--token-auth-file=known_tokens.csv\n",
+			"kube-apiserver": "--secure-port 16443\n--authorization-mode=Node\n--token-auth-file=known_tokens.csv\n--etcd-servers=${SNAP_DATA}/var/kubernetes/backend/kine.sock:12379\n",
 			"kube-proxy":     "--cluster-cidr 10.1.0.0/16",
 			"cluster-agent":  "--bind=0.0.0.0:25000",
 		},
@@ -290,7 +290,7 @@ Role: 0`,
 		ServiceAccountKey: "SERVICE ACCOUNT KEY DATA",
 		ServiceArguments: map[string]string{
 			"kubelet":        "kubelet arguments\n",
-			"kube-apiserver": "--secure-port 16443\n--authorization-mode=Node\n--kubelet-preferred-address-types=InternalIP,Hostname\n--token-auth-file=known_tokens.csv\n",
+			"kube-apiserver": "--secure-port 16443\n--authorization-mode=Node\n--kubelet-preferred-address-types=InternalIP,Hostname\n--token-auth-file=known_tokens.csv\n--etcd-servers=${SNAP_DATA}/var/kubernetes/backend/kine.sock:12379\n",
 			"kube-proxy":     "--cluster-cidr 10.1.0.0/16",
 			"cluster-agent":  "--bind=0.0.0.0:25000",
 		},
@@ -347,6 +347,75 @@ Role: 0`,
 	g.Expect(s.ConsumeClusterTokenCalledWith).To(ConsistOf("control-plane-token"))
 	g.Expect(s.ApplyCNICalled).To(HaveLen(1))
 	g.Expect(s.CreateNoCertsReissueLockCalledWith).To(HaveLen(1))
+}
+
+func TestJoinCustomEtcdEndpoints(t *testing.T) {
+	s := &mock.Snap{
+		DqliteLock: true,
+		EtcdCA:     "ETCD CA DATA",
+		EtcdCert:   "ETCD CERTIFICATE DATA",
+		EtcdKey:    "ETCD KEY DATA",
+		ServiceArguments: map[string]string{
+			"kubelet":        "kubelet arguments\n",
+			"kube-apiserver": "--secure-port 16443\n--etcd-servers=https://etcd1:2379,https://etcd2:2379\n",
+			"kube-proxy":     "--cluster-cidr 10.1.0.0/16",
+			"cluster-agent":  "--bind=0.0.0.0:25000",
+		},
+		ClusterTokens: []string{"token-1", "token-2"},
+	}
+
+	apiv2 := &v2.API{
+		Snap: s,
+		LookupIP: func(hostname string) ([]net.IP, error) {
+			return map[string][]net.IP{
+				"test-1": {{10, 10, 10, 11}},
+				"test-2": {{10, 10, 10, 12}},
+			}[hostname], nil
+		},
+		InterfaceAddrs: func() ([]net.Addr, error) {
+			return []net.Addr{
+				&utiltest.MockCIDR{CIDR: "127.0.0.1/8"},
+				&utiltest.MockCIDR{CIDR: "10.10.10.10/16"},
+			}, nil
+		},
+	}
+
+	t.Run("NotSupportedByClient", func(t *testing.T) {
+		g := NewWithT(t)
+		resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{
+			ClusterToken:             "token-1",
+			RemoteHostName:           "test-1",
+			ClusterAgentPort:         "25000",
+			HostPort:                 "10.10.10.10:25000",
+			RemoteAddress:            "10.10.10.11:41532",
+			WorkerOnly:               false,
+			CanHandleCertificateAuth: true,
+		})
+		g.Expect(err).NotTo(BeNil())
+		g.Expect(resp).To(BeNil())
+	})
+
+	t.Run("SupportedByClient", func(t *testing.T) {
+		g := NewWithT(t)
+		resp, _, err := apiv2.Join(context.Background(), v2.JoinRequest{
+			ClusterToken:             "token-2",
+			RemoteHostName:           "test-2",
+			ClusterAgentPort:         "25000",
+			HostPort:                 "10.10.10.10:25000",
+			RemoteAddress:            "10.10.10.12:41532",
+			WorkerOnly:               false,
+			CanHandleCustomEtcd:      true,
+			CanHandleCertificateAuth: true,
+		})
+		g.Expect(err).To(BeNil())
+		g.Expect(resp.EtcdServers).To(Equal("https://etcd1:2379,https://etcd2:2379"))
+		g.Expect(resp.EtcdCertificateAuthority).To(Equal("ETCD CA DATA"))
+		g.Expect(resp.EtcdClientCertificate).To(Equal("ETCD CERTIFICATE DATA"))
+		g.Expect(resp.EtcdClientKey).To(Equal("ETCD KEY DATA"))
+		g.Expect(resp.DqliteClusterCertificate).To(BeEmpty())
+		g.Expect(resp.DqliteClusterKey).To(BeEmpty())
+		g.Expect(resp.DqliteVoterNodes).To(BeEmpty())
+	})
 }
 
 func TestUnmarshalWorkerOnlyField(t *testing.T) {

@@ -84,6 +84,8 @@ type Snap struct {
 	AddonRepositories map[string]AddonRepository
 
 	JoinClusterCalledWith []JoinClusterCall
+
+	EtcdCA, EtcdCert, EtcdKey string
 }
 
 // GetGroupName is a mock implementation for the snap.Snap interface.
@@ -338,6 +340,11 @@ func (s *Snap) AddAddonsRepository(ctx context.Context, name, url, reference str
 func (s *Snap) JoinCluster(ctx context.Context, url string, worker bool) error {
 	s.JoinClusterCalledWith = append(s.JoinClusterCalledWith, JoinClusterCall{url, worker})
 	return nil
+}
+
+// ReadEtcdCertificates is a mock implementation for the snap.Snap interface.
+func (s *Snap) ReadEtcdCertificates() (string, string, string, error) {
+	return s.EtcdCA, s.EtcdCert, s.EtcdKey, nil
 }
 
 var _ snap.Snap = &Snap{}
