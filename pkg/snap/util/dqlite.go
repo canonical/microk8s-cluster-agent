@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
@@ -94,4 +95,39 @@ func WaitForDqliteCluster(ctx context.Context, s snap.Snap, f func(DqliteCluster
 		case <-interval.C:
 		}
 	}
+}
+
+// MaybeUpdateDqliteBindAddress checks if the node is part of a dqlite cluster and updates it if necessary.
+// It ensures the node's hostPort is included in the cluster configuration.
+func MaybeUpdateDqliteBindAddress(ctx context.Context, snap snap.Snap, hostPort string, remoteIP string, findMatchingBindAddress func(string) (string, error)) error {
+	// Check node is not in cluster already.
+	dqliteCluster, err := WaitForDqliteCluster(ctx, snap, func(c DqliteCluster) (bool, error) {
+		return len(c) >= 1, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to retrieve dqlite cluster nodes: %w", err)
+	}
+	for _, node := range dqliteCluster {
+		if strings.HasPrefix(node.Address, remoteIP+":") {
+			return fmt.Errorf("the joining node (%s) is already known to dqlite", remoteIP)
+		}
+	}
+	// Update dqlite cluster if needed
+	if len(dqliteCluster) == 1 && strings.HasPrefix(dqliteCluster[0].Address, "127.0.0.1:") {
+		newDqliteBindAddress, err := findMatchingBindAddress(hostPort)
+		if err != nil {
+			return fmt.Errorf("failed to find matching dqlite bind address for %v: %w", hostPort, err)
+		}
+		if err := UpdateDqliteIP(ctx, snap, newDqliteBindAddress); err != nil {
+			return fmt.Errorf("failed to update dqlite address to %q: %w", newDqliteBindAddress, err)
+		}
+		// Wait for dqlite cluster to come up with new address
+		_, err = WaitForDqliteCluster(ctx, snap, func(c DqliteCluster) (bool, error) {
+			return len(c) >= 1 && !strings.HasPrefix(c[0].Address, "127.0.0.1:"), nil
+		})
+		if err != nil {
+			return fmt.Errorf("failed waiting for dqlite cluster to come up: %w", err)
+		}
+	}
+	return nil
 }
