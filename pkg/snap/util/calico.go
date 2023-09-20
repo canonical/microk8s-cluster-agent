@@ -32,7 +32,11 @@ func MaybePatchCalicoAutoDetectionMethod(ctx context.Context, s snap.Snap, canRe
 	}
 
 	var re *regexp.Regexp
-	if ip := net.ParseIP(canReachHost); ip.To4() == nil {
+	ip := net.ParseIP(canReachHost)
+	if ip == nil {
+			return fmt.Errorf("could not parse IP address %q", canReachHost)
+	}
+	if ip.To4() == nil {
 		// Address is in IPv6
 		re = ip6AutodetectionMethodRe
 	} else {
