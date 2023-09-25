@@ -109,3 +109,19 @@ func TestMaybePatchCalicoAutoDetectionMethod(t *testing.T) {
 		})
 	}
 }
+
+func TestMaybePatchCalicoAutoDetectionMethodBadIP(t *testing.T) {
+	yaml := `
+- name: IP_AUTODETECTION_METHOD
+  value: "first-found"
+- name: IP6_AUTODETECTION_METHOD
+  value: "first-found"`
+	canReachHost := "badIPRepresentation"
+	g := NewWithT(t)
+	snap := &mock.Snap{
+		CNIYaml: yaml,
+	}
+
+	err := snaputil.MaybePatchCalicoAutoDetectionMethod(context.Background(), snap, canReachHost, true)
+        g.Expect(err).NotTo(BeNil())
+}
