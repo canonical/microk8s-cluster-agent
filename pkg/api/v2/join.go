@@ -130,45 +130,12 @@ func (a *API) Join(ctx context.Context, req JoinRequest) (*JoinResponse, int, er
 	// Handle datastore updates
 	switch {
 	case kubeAPIServerUsesDqlite:
-		// FIXME(neoaggelos): move this logic into a snaputil.MaybeUpdateDqliteBindAddress() to cleanup the code a little bit
-
-		// Check node is not in cluster already.
 		a.dqliteMu.Lock()
-		dqliteCluster, err := snaputil.WaitForDqliteCluster(ctx, a.Snap, func(c snaputil.DqliteCluster) (bool, error) {
-			return len(c) >= 1, nil
-		})
+		err := snaputil.MaybeUpdateDqliteBindAddress(ctx, a.Snap, req.HostPort, remoteIP, a.findMatchingBindAddress)
+		a.dqliteMu.Unlock()
 		if err != nil {
-			a.dqliteMu.Unlock()
 			return nil, http.StatusInternalServerError, fmt.Errorf("failed to retrieve dqlite cluster nodes: %w", err)
 		}
-		for _, node := range dqliteCluster {
-			if strings.HasPrefix(node.Address, remoteIP+":") {
-				a.dqliteMu.Unlock()
-				return nil, http.StatusGatewayTimeout, fmt.Errorf("the joining node (%s) is already known to dqlite", remoteIP)
-			}
-		}
-		// Update dqlite cluster if needed
-		if len(dqliteCluster) == 1 && strings.HasPrefix(dqliteCluster[0].Address, "127.0.0.1:") {
-			newDqliteBindAddress, err := a.findMatchingBindAddress(req.HostPort)
-			if err != nil {
-				a.dqliteMu.Unlock()
-				return nil, http.StatusInternalServerError, fmt.Errorf("failed to find matching dqlite bind address for %v: %w", req.HostPort, err)
-			}
-			if err := snaputil.UpdateDqliteIP(ctx, a.Snap, newDqliteBindAddress); err != nil {
-				a.dqliteMu.Unlock()
-				return nil, http.StatusInternalServerError, fmt.Errorf("failed to update dqlite address to %q: %w", newDqliteBindAddress, err)
-			}
-			// Wait for dqlite cluster to come up with new address
-			_, err = snaputil.WaitForDqliteCluster(ctx, a.Snap, func(c snaputil.DqliteCluster) (bool, error) {
-				return len(c) >= 1 && !strings.HasPrefix(c[0].Address, "127.0.0.1:"), nil
-			})
-			if err != nil {
-				a.dqliteMu.Unlock()
-				return nil, http.StatusInternalServerError, fmt.Errorf("failed waiting for dqlite cluster to come up: %w", err)
-			}
-		}
-		a.dqliteMu.Unlock()
-
 	case req.CanHandleCustomEtcd:
 		// no-op
 

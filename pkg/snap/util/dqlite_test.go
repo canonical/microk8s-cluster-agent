@@ -8,6 +8,7 @@ import (
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap/mock"
 	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
+	. "github.com/onsi/gomega"
 )
 
 func TestUpdateDqliteIP(t *testing.T) {
@@ -83,4 +84,80 @@ Role: 0`,
 		}
 	})
 
+}
+
+func TestUpdateDqliteBindAddress(t *testing.T) {
+	findMatchingBindAddressMock := func(addr string) (string, error) {
+		return "10.10.10.10", nil
+	}
+
+	t.Run("MustFailIfNodeAlreadyKnown", func(t *testing.T) {
+
+		s := &mock.Snap{
+			DqliteClusterYaml: `
+- Address: 127.0.0.1:19001
+  ID: 1236189235178654365
+  Role: 0`,
+			DqliteInfoYaml: `
+Address: 127.0.0.1:19001
+ID: 1236189235178654365
+Role: 0`,
+		}
+
+		g := NewWithT(t)
+		err := snaputil.MaybeUpdateDqliteBindAddress(context.Background(), s, "127.0.0.1", "127.0.0.1", findMatchingBindAddressMock)
+		g.Expect(err).To(MatchError("the joining node (127.0.0.1) is already known to dqlite"))
+
+	})
+
+	t.Run("MustNotUpdateIfMultipleNodes", func(t *testing.T) {
+		s := &mock.Snap{
+			DqliteClusterYaml: `
+- Address: 127.0.0.1:19001
+  ID: 1236189235178654365
+  Role: 0
+- Address: 10.10.10.10:19001
+  ID: 12345678987654321
+  Role: 0`,
+			DqliteInfoYaml: `
+Address: 127.0.0.1:19001
+ID: 1236189235178654365
+Role: 0`,
+		}
+
+		g := NewWithT(t)
+		err := snaputil.MaybeUpdateDqliteBindAddress(context.Background(), s, "127.0.0.1:19001", "8.8.8.8", findMatchingBindAddressMock)
+		g.Expect(err).To(BeNil())
+		g.Expect(s.WriteDqliteUpdateYamlCalledWith).To(BeEmpty())
+	})
+
+	t.Run("MustUpdateIfOneNodeAndBindsLocal", func(t *testing.T) {
+		s := &mock.Snap{
+			DqliteClusterYaml: `
+- Address: 127.0.0.1:19001
+  ID: 1236189235178654365
+  Role: 0`,
+			DqliteInfoYaml: `
+Address: 127.0.0.1:19001
+ID: 1236189235178654365
+Role: 0`,
+		}
+		// Update cluster yaml asynchronously
+		// The mock snap implementation doesn't actually write the yaml but instead
+		// sets `WriteDqliteUpdateYamlCalledWith`.
+		// Thus, we need to manually change the config as otherwise `WaitForDqliteCluster`
+		// would wait forever.
+		go func() {
+			<-time.After(500 * time.Millisecond)
+			s.DqliteClusterYaml = `
+- Address: 10.10.10.10:19001
+  ID: 1236189235178654365
+  Role: 0`
+		}()
+
+		g := NewWithT(t)
+		err := snaputil.MaybeUpdateDqliteBindAddress(context.Background(), s, "127.0.0.1:19001", "10.10.10.10", findMatchingBindAddressMock)
+		g.Expect(err).To(BeNil())
+		g.Expect(s.WriteDqliteUpdateYamlCalledWith).To(ConsistOf("Address: 10.10.10.10:19001\n"))
+	})
 }
