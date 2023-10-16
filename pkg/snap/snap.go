@@ -20,9 +20,10 @@ import (
 
 // snap implements the Snap interface.
 type snap struct {
-	snapDir     string
-	snapDataDir string
-	runCommand  func(context.Context, ...string) error
+	snapDir       string
+	snapDataDir   string
+	snapCommonDir string
+	runCommand    func(context.Context, ...string) error
 
 	clusterTokensMu  sync.Mutex
 	certTokensMu     sync.Mutex
@@ -34,12 +35,13 @@ type snap struct {
 }
 
 // NewSnap creates a new interface with the MicroK8s snap.
-// NewSnap accepts the $SNAP and $SNAP_DATA directories, and a number of options.
-func NewSnap(snapDir, snapDataDir string, options ...func(s *snap)) Snap {
+// NewSnap accepts the $SNAP, $SNAP_DATA and $SNAP_COMMON, directories, and a number of options.
+func NewSnap(snapDir, snapDataDir, snapCommonDir string, options ...func(s *snap)) Snap {
 	s := &snap{
-		snapDir:     snapDir,
-		snapDataDir: snapDataDir,
-		runCommand:  util.RunCommand,
+		snapDir:       snapDir,
+		snapDataDir:   snapDataDir,
+		snapCommonDir: snapCommonDir,
+		runCommand:    util.RunCommand,
 	}
 
 	for _, opt := range options {
@@ -55,6 +57,9 @@ func (s *snap) snapPath(parts ...string) string {
 
 func (s *snap) snapDataPath(parts ...string) string {
 	return filepath.Join(append([]string{s.snapDataDir}, parts...)...)
+}
+func (s *snap) snapCommonPath(parts ...string) string {
+	return filepath.Join(append([]string{s.snapCommonDir}, parts...)...)
 }
 
 func (s *snap) GetGroupName() string {
@@ -336,7 +341,15 @@ func (s *snap) SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, erro
 }
 
 func (s *snap) ImportImage(ctx context.Context, reader io.Reader) error {
-	importCmd := exec.CommandContext(ctx, s.snapPath("microk8s-ctr.wrapper"), "image", "import", "--platform", runtime.GOARCH, "-")
+	importCmd := exec.CommandContext(ctx,
+		s.snapPath("bin", "ctr"),
+		"--namespace", "k8s.io",
+		"--address", s.snapCommonPath("run", "containerd.sock"),
+		"image",
+		"import",
+		"--platform", runtime.GOARCH,
+		"-",
+	)
 	importCmd.Stdin = reader
 	importCmd.Stdout = os.Stdout
 	importCmd.Stdout = os.Stderr
