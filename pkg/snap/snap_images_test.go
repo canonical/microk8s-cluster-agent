@@ -25,16 +25,19 @@ cat > testdata/stdin
 `
 
 func TestImportImage(t *testing.T) {
-	if err := os.WriteFile("testdata/microk8s-ctr.wrapper", []byte(mockCtr), 0755); err != nil {
+	if err := os.MkdirAll("testdata/bin", 0700); err != nil {
+		t.Fatalf("Failed to intialize mock bin dir: %v", err)
+	}
+	if err := os.WriteFile("testdata/bin/ctr", []byte(mockCtr), 0755); err != nil {
 		t.Fatalf("Failed to initialize mock ctr command: %v", err)
 	}
 	defer func() {
-		os.Remove("testdata/microk8s-ctr.wrapper")
+		os.RemoveAll("testdata/bin")
 		os.Remove("testdata/stdin")
 		os.Remove("testdata/arguments")
 	}()
 	mockRunner := &utiltest.MockRunner{}
-	s := snap.NewSnap("testdata", "testdata", snap.WithCommandRunner(mockRunner.Run))
+	s := snap.NewSnap("testdata", "testdata", "testdata/common", snap.WithCommandRunner(mockRunner.Run))
 
 	g := NewWithT(t)
 	err := s.ImportImage(context.Background(), bytes.NewBufferString("IMAGEDATA"))
@@ -42,7 +45,7 @@ func TestImportImage(t *testing.T) {
 
 	cmd, err := util.ReadFile("testdata/arguments")
 	g.Expect(err).To(BeNil())
-	g.Expect(strings.TrimSpace(cmd)).To(Equal(fmt.Sprintf("testdata/microk8s-ctr.wrapper image import --platform %s -", runtime.GOARCH)))
+	g.Expect(strings.TrimSpace(cmd)).To(Equal(fmt.Sprintf("testdata/bin/ctr --namespace k8s.io --address testdata/common/run/containerd.sock image import --platform %s -", runtime.GOARCH)))
 
 	stdin, err := util.ReadFile("testdata/stdin")
 	g.Expect(err).To(BeNil())
