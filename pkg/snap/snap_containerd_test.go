@@ -14,7 +14,7 @@ func TestUpdateContainerdRegistryConfigs(t *testing.T) {
 	}
 	defer os.RemoveAll("testdata/args")
 
-	s := snap.NewSnap("testdata", "testdata")
+	s := snap.NewSnap("testdata", "testdata", "testdata")
 
 	t.Run("Mirror", func(t *testing.T) {
 		g := NewWithT(t)
