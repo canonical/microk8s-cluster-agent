@@ -39,6 +39,7 @@ lifecycle of a MicroK8s cluster.`,
 		s := snap.NewSnap(
 			os.Getenv("SNAP"),
 			os.Getenv("SNAP_DATA"),
+			os.Getenv("SNAP_COMMON"),
 			snap.WithRetryApplyCNI(20, 3*time.Second),
 		)
 
