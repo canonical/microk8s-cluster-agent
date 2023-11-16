@@ -22,6 +22,7 @@ var (
 			s := snap.NewSnap(
 				os.Getenv("SNAP"),
 				os.Getenv("SNAP_DATA"),
+				os.Getenv("SNAP_COMMON"),
 			)
 			l := k8sinit.NewLauncher(s, initPreInit)
 

@@ -31,7 +31,7 @@ func TestRunUpgrade(t *testing.T) {
 	defer os.RemoveAll("testdata/upgrade-scripts")
 
 	runner := &utiltest.MockRunner{}
-	s := snap.NewSnap("testdata", "testdata", snap.WithCommandRunner(runner.Run))
+	s := snap.NewSnap("testdata", "testdata", "testdata", snap.WithCommandRunner(runner.Run))
 
 	t.Run("Invalid", func(t *testing.T) {
 		for _, tc := range []struct {
@@ -58,7 +58,7 @@ func TestRunUpgrade(t *testing.T) {
 			t.Run(phase, func(t *testing.T) {
 
 				runner := &utiltest.MockRunner{}
-				s := snap.NewSnap("testdata", "testdata", snap.WithCommandRunner(runner.Run))
+				s := snap.NewSnap("testdata", "testdata", "testdata", snap.WithCommandRunner(runner.Run))
 
 				err := s.RunUpgrade(context.Background(), "001-custom-upgrade", phase)
 				if err != nil {
@@ -71,5 +71,4 @@ func TestRunUpgrade(t *testing.T) {
 			})
 		}
 	})
-
 }
