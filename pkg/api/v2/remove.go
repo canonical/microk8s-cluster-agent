@@ -11,7 +11,7 @@ import (
 // RemoveRequest represents a request to remove a node from the dqlite cluster.
 type RemoveRequest struct {
 	// HostPort is the address of the node to remove.
-	HostPort string
+	HostPort string `json:"hostPort"`
 }
 
 // Remove implements the "POST /v2/remove" endpoint and removes a node from the dqlite cluster.
