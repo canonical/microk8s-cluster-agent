@@ -133,13 +133,13 @@ func MaybeUpdateDqliteBindAddress(ctx context.Context, snap snap.Snap, hostPort 
 }
 
 // RemoveNodeFromDqlite uses the Dqlite binary to remove a node from the Dqlite cluster.
-func RemoveNodeFromDqlite(ctx context.Context, snap snap.Snap, hostPort string) error {
+func RemoveNodeFromDqlite(ctx context.Context, snap snap.Snap, removeEp string) error {
 	binPath := snap.GetSnapPath("bin", "dqlite")
 	clusterYamlPath := snap.GetSnapDataPath("var", "kubernetes", "backend", "cluster.yaml")
 	clusterCrtPath := snap.GetSnapDataPath("var", "kubernetes", "backend", "cluster.crt")
 	clusterKeyPath := snap.GetSnapDataPath("var", "kubernetes", "backend", "cluster.key")
 
-	if err := snap.RunCommand(ctx, binPath, "-s", "file://"+clusterYamlPath, "-c", clusterCrtPath, "-k", clusterKeyPath, "-f", "json", "k8s", ".remove", hostPort); err != nil {
+	if err := snap.RunCommand(ctx, binPath, "-s", "file://"+clusterYamlPath, "-c", clusterCrtPath, "-k", clusterKeyPath, "-f", "json", "k8s", ".remove", removeEp); err != nil {
 		return fmt.Errorf("failed to run remove command: %w", err)
 	}
 

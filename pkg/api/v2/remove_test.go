@@ -21,7 +21,7 @@ func TestRemove(t *testing.T) {
 			},
 		}
 
-		rc, err := apiv2.Remove(context.Background(), v2.RemoveRequest{HostPort: "1.1.1.1:1234"})
+		rc, err := apiv2.RemoveFromDqlite(context.Background(), v2.RemoveFromDqliteRequest{RemoveEndpoint: "1.1.1.1:1234"})
 
 		g := NewWithT(t)
 		g.Expect(err).To(MatchError(cmdErr))
@@ -33,7 +33,7 @@ func TestRemove(t *testing.T) {
 			Snap: &mock.Snap{},
 		}
 
-		rc, err := apiv2.Remove(context.Background(), v2.RemoveRequest{HostPort: "1.1.1.1:1234"})
+		rc, err := apiv2.RemoveFromDqlite(context.Background(), v2.RemoveFromDqliteRequest{RemoveEndpoint: "1.1.1.1:1234"})
 
 		g := NewWithT(t)
 		g.Expect(err).ToNot(HaveOccurred())

@@ -54,21 +54,21 @@ func (a *API) RegisterServer(server *http.ServeMux, middleware func(f http.Handl
 		httputil.Response(w, map[string]string{"status": "OK"})
 	}))
 
-	// POST v2/remove
-	server.HandleFunc(fmt.Sprintf("%s/remove", HTTPPrefix), middleware(func(w http.ResponseWriter, r *http.Request) {
+	// POST v2/dqlite/remove
+	server.HandleFunc(fmt.Sprintf("%s/dqlite/remove", HTTPPrefix), middleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
 
-		req := RemoveRequest{}
+		req := RemoveFromDqliteRequest{}
 		if err := httputil.UnmarshalJSON(r, &req); err != nil {
 			httputil.Error(w, http.StatusBadRequest, fmt.Errorf("failed to unmarshal JSON: %w", err))
 			return
 		}
 
-		if rc, err := a.Remove(r.Context(), req); err != nil {
-			httputil.Error(w, rc, fmt.Errorf("failed to remove: %w", err))
+		if rc, err := a.RemoveFromDqlite(r.Context(), req); err != nil {
+			httputil.Error(w, rc, fmt.Errorf("failed to remove from dqlite: %w", err))
 			return
 		}
 
