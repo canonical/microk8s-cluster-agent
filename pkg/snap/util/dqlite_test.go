@@ -179,7 +179,7 @@ func TestRemoveNodeFromDqlite(t *testing.T) {
 	t.Run("CommandRunsSuccessfully", func(t *testing.T) {
 		snapDir := "/snapDir"
 		snapDataDir := "/snapDataDir"
-		hostPort := "1.1.1.1:1234"
+		removeEp := "1.1.1.1:1234"
 
 		s := &mock.Snap{
 			SnapDir:     snapDir,
@@ -187,8 +187,8 @@ func TestRemoveNodeFromDqlite(t *testing.T) {
 		}
 
 		g := NewWithT(t)
-		g.Expect(snaputil.RemoveNodeFromDqlite(context.Background(), s, hostPort)).To(Succeed())
+		g.Expect(snaputil.RemoveNodeFromDqlite(context.Background(), s, removeEp)).To(Succeed())
 		g.Expect(s.RunCommandCalledWith).To(HaveLen(1))
-		g.Expect(s.RunCommandCalledWith[0].Commands).To(ContainElements(ContainSubstring(snapDir), ContainSubstring(snapDataDir), hostPort))
+		g.Expect(s.RunCommandCalledWith[0].Commands).To(ContainElements(ContainSubstring(snapDir), ContainSubstring(snapDataDir), removeEp))
 	})
 }
