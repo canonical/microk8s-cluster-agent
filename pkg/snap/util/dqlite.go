@@ -139,7 +139,7 @@ func RemoveNodeFromDqlite(ctx context.Context, snap snap.Snap, removeEp string) 
 	clusterCrtPath := snap.GetSnapDataPath("var", "kubernetes", "backend", "cluster.crt")
 	clusterKeyPath := snap.GetSnapDataPath("var", "kubernetes", "backend", "cluster.key")
 
-	if err := snap.RunCommand(ctx, binPath, "-s", "file://"+clusterYamlPath, "-c", clusterCrtPath, "-k", clusterKeyPath, "-f", "json", "k8s", ".remove", removeEp); err != nil {
+	if err := snap.RunCommand(ctx, binPath, "-s", "file://"+clusterYamlPath, "-c", clusterCrtPath, "-k", clusterKeyPath, "-f", "json", "k8s", fmt.Sprintf(".remove %s", removeEp)); err != nil {
 		return fmt.Errorf("failed to run remove command: %w", err)
 	}
 

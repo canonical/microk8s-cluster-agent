@@ -3,6 +3,7 @@ package snaputil_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -189,6 +190,6 @@ func TestRemoveNodeFromDqlite(t *testing.T) {
 		g := NewWithT(t)
 		g.Expect(snaputil.RemoveNodeFromDqlite(context.Background(), s, removeEp)).To(Succeed())
 		g.Expect(s.RunCommandCalledWith).To(HaveLen(1))
-		g.Expect(s.RunCommandCalledWith[0].Commands).To(ContainElements(ContainSubstring(snapDir), ContainSubstring(snapDataDir), removeEp))
+		g.Expect(s.RunCommandCalledWith[0].Commands).To(ContainElements(ContainSubstring(snapDir), ContainSubstring(snapDataDir), fmt.Sprintf(".remove %s", removeEp)))
 	})
 }
