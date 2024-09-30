@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
@@ -23,8 +24,20 @@ type JoinClusterCall struct {
 	Worker bool
 }
 
+// RunCommandCall contains the arguments passed to a specific call of the RunCommand method.
+type RunCommandCall struct {
+	Commands []string
+}
+
 // Snap is a generic mock for the snap.Snap interface.
 type Snap struct {
+	SnapDir       string
+	SnapDataDir   string
+	SnapCommonDir string
+
+	RunCommandCalledWith []RunCommandCall
+	RunCommandErr        error
+
 	GroupName string
 
 	EnableAddonCalledWith    []string
@@ -86,6 +99,27 @@ type Snap struct {
 	JoinClusterCalledWith []JoinClusterCall
 
 	EtcdCA, EtcdCert, EtcdKey string
+}
+
+// GetSnapPath is a mock implementation for the snap.Snap interface.
+func (s *Snap) GetSnapPath(parts ...string) string {
+	return filepath.Join(append([]string{s.SnapDir}, parts...)...)
+}
+
+// GetSnapDataPath is a mock implementation for the snap.Snap interface.
+func (s *Snap) GetSnapDataPath(parts ...string) string {
+	return filepath.Join(append([]string{s.SnapDataDir}, parts...)...)
+}
+
+// GetSnapCommonPath is a mock implementation for the snap.Snap interface.
+func (s *Snap) GetSnapCommonPath(parts ...string) string {
+	return filepath.Join(append([]string{s.SnapCommonDir}, parts...)...)
+}
+
+// RunCommand is a mock implementation for the snap.Snap interface.
+func (s *Snap) RunCommand(_ context.Context, commands ...string) error {
+	s.RunCommandCalledWith = append(s.RunCommandCalledWith, RunCommandCall{Commands: commands})
+	return s.RunCommandErr
 }
 
 // GetGroupName is a mock implementation for the snap.Snap interface.

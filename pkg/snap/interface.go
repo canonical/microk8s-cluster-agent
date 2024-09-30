@@ -7,6 +7,16 @@ import (
 
 // Snap is how the cluster agent interacts with the snap.
 type Snap interface {
+	// GetSnapPath returns the path to a file or directory in the snap directory.
+	GetSnapPath(parts ...string) string
+	// GetSnapDataPath returns the path to a file or directory in the snap's data directory.
+	GetSnapDataPath(parts ...string) string
+	// GetSnapCommonPath returns the path to a file or directory in the snap's common directory.
+	GetSnapCommonPath(parts ...string) string
+
+	// RunCommand runs a shell command.
+	RunCommand(ctx context.Context, commands ...string) error
+
 	// GetGroupName is the group microk8s is using.
 	// The group name is "microk8s" for classic snaps and "snap_microk8s" for strict snaps.
 	GetGroupName() string
