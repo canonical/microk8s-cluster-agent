@@ -329,6 +329,7 @@ func (s *Snap) GetKnownToken(username string) (string, error) {
 	return "", fmt.Errorf("no known token for user %s", username)
 }
 
+// IsCAPIAuthTokenValid is a mock implementation for the snap.Snap interface.
 func (s *Snap) IsCAPIAuthTokenValid(token string) (bool, error) {
 	return s.CAPIAuthTokenValid, s.CAPIAuthTokenError
 }
