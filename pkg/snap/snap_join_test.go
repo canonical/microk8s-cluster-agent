@@ -15,7 +15,7 @@ func TestJoinCluster(t *testing.T) {
 	t.Run("PropagateError", func(t *testing.T) {
 		g := NewWithT(t)
 		runner := &utiltest.MockRunner{}
-		s := snap.NewSnap("testdata", "testdata", "testdata", snap.WithCommandRunner(runner.Run))
+		s := snap.NewSnap("testdata", "testdata", "testdata", "", snap.WithCommandRunner(runner.Run))
 		runner.Err = fmt.Errorf("some error")
 
 		err := s.JoinCluster(context.Background(), "some-url", false)
@@ -26,7 +26,7 @@ func TestJoinCluster(t *testing.T) {
 	t.Run("ControlPlane", func(t *testing.T) {
 		g := NewWithT(t)
 		runner := &utiltest.MockRunner{}
-		s := snap.NewSnap("testdata", "testdata", "testdata", snap.WithCommandRunner(runner.Run))
+		s := snap.NewSnap("testdata", "testdata", "testdata", "", snap.WithCommandRunner(runner.Run))
 
 		err := s.JoinCluster(context.Background(), "10.10.10.10:25000/token/hash", false)
 		g.Expect(err).To(BeNil())
@@ -36,7 +36,7 @@ func TestJoinCluster(t *testing.T) {
 	t.Run("Worker", func(t *testing.T) {
 		g := NewWithT(t)
 		runner := &utiltest.MockRunner{}
-		s := snap.NewSnap("testdata", "testdata", "testdata", snap.WithCommandRunner(runner.Run))
+		s := snap.NewSnap("testdata", "testdata", "testdata", "", snap.WithCommandRunner(runner.Run))
 
 		err := s.JoinCluster(context.Background(), "10.10.10.10:25000/token/hash", true)
 		g.Expect(err).To(BeNil())

@@ -11,7 +11,7 @@ import (
 
 func TestServiceRestart(t *testing.T) {
 	mockRunner := &utiltest.MockRunner{}
-	s := snap.NewSnap("testdata", "testdata", "testdata", snap.WithCommandRunner(mockRunner.Run))
+	s := snap.NewSnap("testdata", "testdata", "testdata", "", snap.WithCommandRunner(mockRunner.Run))
 
 	t.Run("NoKubelite", func(t *testing.T) {
 		for _, tc := range []struct {

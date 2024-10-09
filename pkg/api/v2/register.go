@@ -67,7 +67,9 @@ func (a *API) RegisterServer(server *http.ServeMux, middleware func(f http.Handl
 			return
 		}
 
-		if rc, err := a.RemoveFromDqlite(r.Context(), req); err != nil {
+		token := r.Header.Get(CAPIAuthTokenHeader)
+
+		if rc, err := a.RemoveFromDqlite(r.Context(), req, token); err != nil {
 			httputil.Error(w, rc, fmt.Errorf("failed to remove from dqlite: %w", err))
 			return
 		}

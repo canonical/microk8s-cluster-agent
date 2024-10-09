@@ -12,7 +12,7 @@ import (
 func TestAddons(t *testing.T) {
 	t.Run("EnableDisable", func(t *testing.T) {
 		runner := &utiltest.MockRunner{}
-		s := snap.NewSnap("testdata", "testdata", "testdata", snap.WithCommandRunner(runner.Run))
+		s := snap.NewSnap("testdata", "testdata", "testdata", "", snap.WithCommandRunner(runner.Run))
 
 		s.EnableAddon(context.Background(), "dns")
 		s.EnableAddon(context.Background(), "dns", "10.0.0.2")
@@ -32,7 +32,7 @@ func TestAddons(t *testing.T) {
 
 	t.Run("AddRepository", func(t *testing.T) {
 		runner := &utiltest.MockRunner{}
-		s := snap.NewSnap("testdata", "testdata", "testdata", snap.WithCommandRunner(runner.Run))
+		s := snap.NewSnap("testdata", "testdata", "testdata", "", snap.WithCommandRunner(runner.Run))
 
 		s.AddAddonsRepository(context.Background(), "core", "/snap/microk8s/current/addons/core", "", false)
 		s.AddAddonsRepository(context.Background(), "core", "/snap/microk8s/current/addons/core", "", true)

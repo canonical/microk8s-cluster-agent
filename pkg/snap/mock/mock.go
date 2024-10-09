@@ -34,6 +34,7 @@ type Snap struct {
 	SnapDir       string
 	SnapDataDir   string
 	SnapCommonDir string
+	CAPIDir       string
 
 	RunCommandCalledWith []RunCommandCall
 	RunCommandErr        error
@@ -85,6 +86,9 @@ type Snap struct {
 	KubeletTokens     map[string]string // map hostname to token
 	KnownTokens       map[string]string // map username to token
 
+	CAPIAuthTokenValid bool
+	CAPIAuthTokenError error
+
 	SignCertificateCalledWith []string // string(csrPEM)
 	SignedCertificate         string
 
@@ -114,6 +118,11 @@ func (s *Snap) GetSnapDataPath(parts ...string) string {
 // GetSnapCommonPath is a mock implementation for the snap.Snap interface.
 func (s *Snap) GetSnapCommonPath(parts ...string) string {
 	return filepath.Join(append([]string{s.SnapCommonDir}, parts...)...)
+}
+
+// GetCAPIPath is a mock implementation for the snap.Snap interface.
+func (s *Snap) GetCAPIPath(parts ...string) string {
+	return filepath.Join(append([]string{s.CAPIDir}, parts...)...)
 }
 
 // RunCommand is a mock implementation for the snap.Snap interface.
@@ -318,6 +327,10 @@ func (s *Snap) GetKnownToken(username string) (string, error) {
 		return t, nil
 	}
 	return "", fmt.Errorf("no known token for user %s", username)
+}
+
+func (s *Snap) IsCAPIAuthTokenValid(token string) (bool, error) {
+	return s.CAPIAuthTokenValid, s.CAPIAuthTokenError
 }
 
 // RunUpgrade is a mock implementation for the snap.Snap interface.

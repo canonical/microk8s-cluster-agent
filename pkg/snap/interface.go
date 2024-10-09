@@ -13,6 +13,8 @@ type Snap interface {
 	GetSnapDataPath(parts ...string) string
 	// GetSnapCommonPath returns the path to a file or directory in the snap's common directory.
 	GetSnapCommonPath(parts ...string) string
+	// GetCAPIPath returns the path to a file or directory in the CAPI directory.
+	GetCAPIPath(parts ...string) string
 
 	// RunCommand runs a shell command.
 	RunCommand(ctx context.Context, commands ...string) error
@@ -97,6 +99,9 @@ type Snap interface {
 	GetOrCreateKubeletToken(hostname string) (string, error)
 	// GetKnownToken returns the token for a known user from the known_users.csv file.
 	GetKnownToken(username string) (string, error)
+
+	// IsCAPIAuthTokenValid returns true if token is a valid CAPI auth token.
+	IsCAPIAuthTokenValid(token string) (bool, error)
 
 	// SignCertificate signs the certificate signing request, and returns the certificate in PEM format.
 	SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, error)

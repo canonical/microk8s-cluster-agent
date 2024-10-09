@@ -35,7 +35,7 @@ func TestSignCertificate(t *testing.T) {
 		os.Remove("testdata/arguments")
 	}()
 	mockRunner := &utiltest.MockRunner{}
-	s := snap.NewSnap("testdata", "testdata", "testdata", snap.WithCommandRunner(mockRunner.Run))
+	s := snap.NewSnap("testdata", "testdata", "testdata", "", snap.WithCommandRunner(mockRunner.Run))
 
 	g := NewWithT(t)
 	b, err := s.SignCertificate(context.Background(), []byte("MOCK CSR"))
