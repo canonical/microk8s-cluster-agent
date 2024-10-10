@@ -47,7 +47,7 @@ func TestFiles(t *testing.T) {
 		defer os.RemoveAll(filepath.Dir(file))
 	}
 
-	s := snap.NewSnap("testdata", "testdata", "testdata", "")
+	s := snap.NewSnap("testdata", "testdata", "testdata")
 
 	for _, tc := range []struct {
 		name     string

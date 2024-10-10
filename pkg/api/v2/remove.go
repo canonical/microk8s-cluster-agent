@@ -16,9 +16,12 @@ type RemoveFromDqliteRequest struct {
 
 // RemoveFromDqlite implements the "POST /v2/dqlite/remove" endpoint and removes a node from the dqlite cluster.
 func (a *API) RemoveFromDqlite(ctx context.Context, req RemoveFromDqliteRequest, token string) (int, error) {
-	if isValid, err := a.Snap.IsCAPIAuthTokenValid(token); err != nil {
+	isValid, err := a.Snap.IsCAPIAuthTokenValid(token)
+	if err != nil {
 		return http.StatusUnauthorized, fmt.Errorf("failed to validate CAPI auth token: %w", err)
-	} else if !isValid {
+	}
+
+	if !isValid {
 		return http.StatusUnauthorized, fmt.Errorf("invalid CAPI auth token %q", token)
 	}
 

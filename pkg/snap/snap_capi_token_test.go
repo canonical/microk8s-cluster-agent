@@ -13,7 +13,7 @@ import (
 func TestCAPIAuthToken(t *testing.T) {
 	capiTestPath := "./capi-test"
 	os.RemoveAll(capiTestPath)
-	s := snap.NewSnap("", "", "", capiTestPath)
+	s := snap.NewSnap("", "", "", snap.WithCAPIPath(capiTestPath))
 	token := "token123"
 
 	g := NewWithT(t)

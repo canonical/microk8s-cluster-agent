@@ -35,14 +35,18 @@ type snap struct {
 	applyCNIBackoff time.Duration
 }
 
+const (
+	defaultCAPIPath = "/capi"
+)
+
 // NewSnap creates a new interface with the MicroK8s snap.
 // NewSnap accepts the $SNAP, $SNAP_DATA and $SNAP_COMMON, directories, and a number of options.
-func NewSnap(snapDir, snapDataDir, snapCommonDir, capiPath string, options ...func(s *snap)) Snap {
+func NewSnap(snapDir, snapDataDir, snapCommonDir string, options ...func(s *snap)) Snap {
 	s := &snap{
 		snapDir:       snapDir,
 		snapDataDir:   snapDataDir,
 		snapCommonDir: snapCommonDir,
-		capiPath:      capiPath,
+		capiPath:      defaultCAPIPath,
 		runCommand:    util.RunCommand,
 	}
 

@@ -36,16 +36,10 @@ var clusterAgentCmd = &cobra.Command{
 	Long: `The MicroK8s cluster agent is an API server that orchestrates the
 lifecycle of a MicroK8s cluster.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		capiPath := os.Getenv("CAPI_PATH")
-		if capiPath == "" {
-			capiPath = capiDefaultPath
-		}
-
 		s := snap.NewSnap(
 			os.Getenv("SNAP"),
 			os.Getenv("SNAP_DATA"),
 			os.Getenv("SNAP_COMMON"),
-			capiPath,
 			snap.WithRetryApplyCNI(20, 3*time.Second),
 		)
 

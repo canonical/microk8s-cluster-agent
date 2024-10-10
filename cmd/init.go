@@ -19,16 +19,10 @@ var (
 		Short:  "Apply MicroK8s configurations",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			capiPath := os.Getenv("CAPI_PATH")
-			if capiPath == "" {
-				capiPath = capiDefaultPath
-			}
-
 			s := snap.NewSnap(
 				os.Getenv("SNAP"),
 				os.Getenv("SNAP_DATA"),
 				os.Getenv("SNAP_COMMON"),
-				capiPath,
 			)
 			l := k8sinit.NewLauncher(s, initPreInit)
 
