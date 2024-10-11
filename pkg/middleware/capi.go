@@ -13,6 +13,7 @@ const (
 	CAPIAuthTokenHeader = "capi-auth-token"
 )
 
+// CAPIAuthToken is a middleware that checks the CAPI auth token.
 func CAPIAuthToken(next http.HandlerFunc, snap snap.Snap) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get(CAPIAuthTokenHeader)
