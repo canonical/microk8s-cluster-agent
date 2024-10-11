@@ -9,6 +9,7 @@ import (
 	v2 "github.com/canonical/microk8s-cluster-agent/pkg/api/v2"
 	"github.com/canonical/microk8s-cluster-agent/pkg/httputil"
 	"github.com/canonical/microk8s-cluster-agent/pkg/middleware"
+	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -19,6 +20,10 @@ func NewServeMux(timeout time.Duration, enableMetrics bool, apiv1 *v1.API, apiv2
 	withMiddleware := func(f http.HandlerFunc) http.HandlerFunc {
 		timeoutMiddleware := middleware.Timeout(timeout)
 		return middleware.Log(timeoutMiddleware(f))
+	}
+
+	capiAuthMiddleWare := func(f http.HandlerFunc, snp snap.Snap) http.HandlerFunc {
+		return middleware.CAPIAuthToken(f, snp)
 	}
 
 	// Default handler
@@ -43,7 +48,7 @@ func NewServeMux(timeout time.Duration, enableMetrics bool, apiv1 *v1.API, apiv2
 
 	// Cluster Agent API
 	apiv1.RegisterServer(server, withMiddleware)
-	apiv2.RegisterServer(server, withMiddleware)
+	apiv2.RegisterServer(server, withMiddleware, capiAuthMiddleWare)
 
 	return server
 }
