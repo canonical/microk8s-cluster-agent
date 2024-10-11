@@ -18,7 +18,7 @@ type RemoveFromDqliteRequest struct {
 func (a *API) RemoveFromDqlite(ctx context.Context, req RemoveFromDqliteRequest, token string) (int, error) {
 	isValid, err := a.Snap.IsCAPIAuthTokenValid(token)
 	if err != nil {
-		return http.StatusUnauthorized, fmt.Errorf("failed to validate CAPI auth token: %w", err)
+		return http.StatusInternalServerError, fmt.Errorf("failed to validate CAPI auth token: %w", err)
 	}
 
 	if !isValid {
