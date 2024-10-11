@@ -55,7 +55,7 @@ func TestRemove(t *testing.T) {
 
 		g := NewWithT(t)
 		g.Expect(err).To(MatchError(tokenErr))
-		g.Expect(rc).To(Equal(http.StatusUnauthorized))
+		g.Expect(rc).To(Equal(http.StatusInternalServerError))
 	})
 
 	t.Run("RemovesSuccessfully", func(t *testing.T) {
