@@ -5,14 +5,13 @@ import (
 	"net/http"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/httputil"
-	"github.com/canonical/microk8s-cluster-agent/pkg/snap"
 )
 
 // HTTPPrefix is the prefix for all v2 API routes.
 const HTTPPrefix = "/cluster/api/v2.0"
 
 // RegisterServer registers the Cluster API v2 endpoints on an HTTP server.
-func (a *API) RegisterServer(server *http.ServeMux, middleware func(f http.HandlerFunc) http.HandlerFunc, capiAuthMiddleware func(http.HandlerFunc, snap.Snap) http.HandlerFunc) {
+func (a *API) RegisterServer(server *http.ServeMux, middleware func(f http.HandlerFunc) http.HandlerFunc) {
 	// POST v2/join
 	server.HandleFunc(fmt.Sprintf("%s/join", HTTPPrefix), middleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -56,27 +55,25 @@ func (a *API) RegisterServer(server *http.ServeMux, middleware func(f http.Handl
 	}))
 
 	// POST v2/dqlite/remove
-	server.HandleFunc(fmt.Sprintf("%s/dqlite/remove", HTTPPrefix),
-		middleware(func(w http.ResponseWriter, r *http.Request) {
-			capiAuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method != http.MethodPost {
-					w.WriteHeader(http.StatusMethodNotAllowed)
-					return
-				}
+	server.HandleFunc(fmt.Sprintf("%s/dqlite/remove", HTTPPrefix), middleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
 
-				req := RemoveFromDqliteRequest{}
-				if err := httputil.UnmarshalJSON(r, &req); err != nil {
-					httputil.Error(w, http.StatusBadRequest, fmt.Errorf("failed to unmarshal JSON: %w", err))
-					return
-				}
+		req := RemoveFromDqliteRequest{}
+		if err := httputil.UnmarshalJSON(r, &req); err != nil {
+			httputil.Error(w, http.StatusBadRequest, fmt.Errorf("failed to unmarshal JSON: %w", err))
+			return
+		}
 
-				if rc, err := a.RemoveFromDqlite(r.Context(), req); err != nil {
-					httputil.Error(w, rc, fmt.Errorf("failed to remove from dqlite: %w", err))
-					return
-				}
+		token := r.Header.Get(CAPIAuthTokenHeader)
 
-				httputil.Response(w, nil)
-			}, a.Snap)
-		}),
-	)
+		if rc, err := a.RemoveFromDqlite(r.Context(), req, token); err != nil {
+			httputil.Error(w, rc, fmt.Errorf("failed to remove from dqlite: %w", err))
+			return
+		}
+
+		httputil.Response(w, nil)
+	}))
 }
