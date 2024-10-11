@@ -23,6 +23,7 @@ type snap struct {
 	snapDir       string
 	snapDataDir   string
 	snapCommonDir string
+	capiPath      string
 	runCommand    func(context.Context, ...string) error
 
 	clusterTokensMu  sync.Mutex
@@ -34,6 +35,10 @@ type snap struct {
 	applyCNIBackoff time.Duration
 }
 
+const (
+	defaultCAPIPath = "/capi"
+)
+
 // NewSnap creates a new interface with the MicroK8s snap.
 // NewSnap accepts the $SNAP, $SNAP_DATA and $SNAP_COMMON, directories, and a number of options.
 func NewSnap(snapDir, snapDataDir, snapCommonDir string, options ...func(s *snap)) Snap {
@@ -41,6 +46,7 @@ func NewSnap(snapDir, snapDataDir, snapCommonDir string, options ...func(s *snap
 		snapDir:       snapDir,
 		snapDataDir:   snapDataDir,
 		snapCommonDir: snapCommonDir,
+		capiPath:      defaultCAPIPath,
 		runCommand:    util.RunCommand,
 	}
 
@@ -64,6 +70,9 @@ func (s *snap) GetSnapDataPath(parts ...string) string {
 }
 func (s *snap) GetSnapCommonPath(parts ...string) string {
 	return filepath.Join(append([]string{s.snapCommonDir}, parts...)...)
+}
+func (s *snap) GetCAPIPath(parts ...string) string {
+	return filepath.Join(append([]string{s.capiPath}, parts...)...)
 }
 
 func (s *snap) GetGroupName() string {
@@ -329,6 +338,15 @@ func (s *snap) GetKnownToken(username string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("no known token found for user %s", username)
+}
+
+// IsCAPIAuthTokenValid checks if the given CAPI auth token is valid.
+func (s *snap) IsCAPIAuthTokenValid(token string) (bool, error) {
+	contents, err := util.ReadFile(s.GetCAPIPath("etc", "token"))
+	if err != nil {
+		return false, fmt.Errorf("failed to read token file: %w", err)
+	}
+	return strings.TrimSpace(contents) == token, nil
 }
 
 func (s *snap) SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, error) {
