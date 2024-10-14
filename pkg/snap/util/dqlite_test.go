@@ -2,9 +2,13 @@ package snaputil_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
+
+	. "github.com/onsi/gomega"
 
 	"github.com/canonical/microk8s-cluster-agent/pkg/snap/mock"
 	snaputil "github.com/canonical/microk8s-cluster-agent/pkg/snap/util"
@@ -83,4 +87,34 @@ Role: 0`,
 		}
 	})
 
+}
+
+func TestRemoveNodeFromDqlite(t *testing.T) {
+	t.Run("CommandFails", func(t *testing.T) {
+		cmdErr := errors.New("failed to run command")
+		s := &mock.Snap{
+			RunCommandErr: cmdErr,
+		}
+
+		err := snaputil.RemoveNodeFromDqlite(context.Background(), s, "1.1.1.1:1234")
+
+		g := NewWithT(t)
+		g.Expect(err).To(MatchError(cmdErr))
+	})
+
+	t.Run("CommandRunsSuccessfully", func(t *testing.T) {
+		snapDir := "/snapDir"
+		snapDataDir := "/snapDataDir"
+		removeEp := "1.1.1.1:1234"
+
+		s := &mock.Snap{
+			SnapDir:     snapDir,
+			SnapDataDir: snapDataDir,
+		}
+
+		g := NewWithT(t)
+		g.Expect(snaputil.RemoveNodeFromDqlite(context.Background(), s, removeEp)).To(Succeed())
+		g.Expect(s.RunCommandCalledWith).To(HaveLen(1))
+		g.Expect(s.RunCommandCalledWith[0].Commands).To(ContainElements(ContainSubstring(snapDir), ContainSubstring(snapDataDir), fmt.Sprintf(".remove %s", removeEp)))
+	})
 }

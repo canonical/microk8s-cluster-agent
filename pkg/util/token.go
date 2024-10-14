@@ -40,8 +40,8 @@ func NewRandomString(letters RandomCharacters, length int) string {
 // A token may optionally have a TTL, which is appended at the end of the token.
 // For example, the tokens file may look like this:
 //
-//     token1
-//     token2|35616531876
+//	token1
+//	token2|35616531876
 //
 // In the file above, token1 is a valid token. token2 is valid until the unix timestamp 35616531876.
 func IsValidToken(token string, tokensFile string) (isValidToken, hasTTL bool) {
