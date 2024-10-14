@@ -22,3 +22,10 @@ func WithCommandRunner(f func(context.Context, ...string) error) func(s *snap) {
 		s.runCommand = f
 	}
 }
+
+// WithCAPIPath configures the path to the CAPI directory.
+func WithCAPIPath(path string) func(s *snap) {
+	return func(s *snap) {
+		s.capiPath = path
+	}
+}
