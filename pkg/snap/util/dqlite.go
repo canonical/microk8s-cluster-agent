@@ -95,3 +95,18 @@ func WaitForDqliteCluster(ctx context.Context, s snap.Snap, f func(DqliteCluster
 		}
 	}
 }
+
+// RemoveNodeFromDqlite uses the Dqlite binary to remove a node from the Dqlite cluster.
+func RemoveNodeFromDqlite(ctx context.Context, snap snap.Snap, removeEp string) error {
+	binPath := snap.GetSnapPath("bin", "dqlite")
+	clusterYamlPath := snap.GetSnapDataPath("var", "kubernetes", "backend", "cluster.yaml")
+	clusterCrtPath := snap.GetSnapDataPath("var", "kubernetes", "backend", "cluster.crt")
+	clusterKeyPath := snap.GetSnapDataPath("var", "kubernetes", "backend", "cluster.key")
+
+	// NOTE(Hue): The last two arguments (.remove <address>) should be a single string. Otherwise Dqlite throws an error.
+	if err := snap.RunCommand(ctx, binPath, "-s", "file://"+clusterYamlPath, "-c", clusterCrtPath, "-k", clusterKeyPath, "-f", "json", "k8s", fmt.Sprintf(".remove %s", removeEp)); err != nil {
+		return fmt.Errorf("failed to run remove command: %w", err)
+	}
+
+	return nil
+}
