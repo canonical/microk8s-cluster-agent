@@ -123,5 +123,5 @@ func TestMaybePatchCalicoAutoDetectionMethodBadIP(t *testing.T) {
 	}
 
 	err := snaputil.MaybePatchCalicoAutoDetectionMethod(context.Background(), snap, canReachHost, true)
-        g.Expect(err).NotTo(BeNil())
+	g.Expect(err).NotTo(BeNil())
 }
