@@ -7,6 +7,18 @@ import (
 
 // Snap is how the cluster agent interacts with the snap.
 type Snap interface {
+	// GetSnapPath returns the path to a file or directory in the snap directory.
+	GetSnapPath(parts ...string) string
+	// GetSnapDataPath returns the path to a file or directory in the snap's data directory.
+	GetSnapDataPath(parts ...string) string
+	// GetSnapCommonPath returns the path to a file or directory in the snap's common directory.
+	GetSnapCommonPath(parts ...string) string
+	// GetCAPIPath returns the path to a file or directory in the CAPI directory.
+	GetCAPIPath(parts ...string) string
+
+	// RunCommand runs a shell command.
+	RunCommand(ctx context.Context, commands ...string) error
+
 	// GetGroupName is the group microk8s is using.
 	// The group name is "microk8s" for classic snaps and "snap_microk8s" for strict snaps.
 	GetGroupName() string
@@ -87,6 +99,9 @@ type Snap interface {
 	GetOrCreateKubeletToken(hostname string) (string, error)
 	// GetKnownToken returns the token for a known user from the known_users.csv file.
 	GetKnownToken(username string) (string, error)
+
+	// IsCAPIAuthTokenValid returns true if token is a valid CAPI auth token.
+	IsCAPIAuthTokenValid(token string) (bool, error)
 
 	// SignCertificate signs the certificate signing request, and returns the certificate in PEM format.
 	SignCertificate(ctx context.Context, csrPEM []byte) ([]byte, error)
