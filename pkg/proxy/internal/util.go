@@ -46,8 +46,26 @@ func writeYaml(file string, data interface{}) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal yaml: %w", err)
 	}
-	if err := os.WriteFile(file, b, 0664); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
+
+	dir := filepath.Dir(file)
+	tmpFile, err := os.CreateTemp(dir, "tmp-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
 	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.Write(b); err != nil {
+		tmpFile.Close()
+		return fmt.Errorf("failed to write to temp file: %w", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	if err := os.Rename(tmpFile.Name(), file); err != nil {
+		return fmt.Errorf("failed to rename temp file to target file: %w", err)
+	}
+
 	return nil
 }
