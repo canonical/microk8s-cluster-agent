@@ -47,6 +47,17 @@ func writeYaml(file string, data interface{}) error {
 		return fmt.Errorf("failed to marshal yaml: %w", err)
 	}
 
+	// NOTE(Hue): This is technically not a good thing to do here,
+	// because for whatever reason we might *want* to write an empty file.
+	// And we're also making this function context aware (read coupled)
+	// which is not a good thing.
+	// However, since this function is **only** used to write `provider.yaml` file and
+	// we know we don't want that file to be empty, we can safely return an error here.
+	// Make sure to remove this check if the above statement is no longer true.
+	if data == nil || len(b) == 0 {
+		return fmt.Errorf("empty yaml data")
+	}
+
 	dir := filepath.Dir(file)
 	tmpFile, err := os.CreateTemp(dir, "tmp-*")
 	if err != nil {
