@@ -64,10 +64,14 @@ func writeYaml(file string, data interface{}) error {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
 	defer os.Remove(tmpFile.Name())
-	defer tmpFile.Close()
 
 	if _, err := tmpFile.Write(b); err != nil {
+		tmpFile.Close()
 		return fmt.Errorf("failed to write to temp file: %w", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temp file: %w", err)
 	}
 
 	if err := os.Rename(tmpFile.Name(), file); err != nil {
