@@ -4,7 +4,6 @@ import (
 	"os"
 	"sync"
 	"testing"
-	"time"
 
 	. "github.com/onsi/gomega"
 )
@@ -60,8 +59,8 @@ func TestWriteFile(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		const (
-			numWriters    = 100
-			numIterations = 100
+			numWriters    = 200
+			numIterations = 200
 		)
 
 		var wg sync.WaitGroup
@@ -82,8 +81,6 @@ func TestWriteFile(t *testing.T) {
 					content, err := os.ReadFile(file.Name())
 					g.Expect(err).ToNot(HaveOccurred())
 					g.Expect(string(content)).To(Equal("key: value\n"))
-
-					time.Sleep(10 * time.Millisecond)
 				}
 			}(i)
 		}
