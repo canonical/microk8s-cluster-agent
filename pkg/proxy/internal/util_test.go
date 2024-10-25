@@ -2,7 +2,10 @@ package internal
 
 import (
 	"os"
+	"sync"
 	"testing"
+
+	. "github.com/onsi/gomega"
 )
 
 func TestGetDefaultProviderFile(t *testing.T) {
@@ -34,4 +37,54 @@ func TestGetDefaultProviderFile(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWriteFile(t *testing.T) {
+	t.Run("EmptyData", func(t *testing.T) {
+		g := NewWithT(t)
+
+		file, err := os.CreateTemp("", "test-*.yaml")
+		defer os.Remove(file.Name())
+
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(writeYaml(file.Name(), nil)).ToNot(Succeed())
+	})
+
+	t.Run("ValidData", func(t *testing.T) {
+		g := NewWithT(t)
+
+		file, err := os.CreateTemp("", "test-*.yaml")
+		defer os.Remove(file.Name())
+
+		g.Expect(err).ToNot(HaveOccurred())
+
+		const (
+			numWriters    = 200
+			numIterations = 200
+		)
+
+		var wg sync.WaitGroup
+		wg.Add(numWriters)
+
+		// The data to write to the file
+		testData := map[string]interface{}{
+			"key": "value",
+		}
+
+		for i := 0; i < numWriters; i++ {
+			go func(writerID int) {
+				defer wg.Done()
+
+				for j := 0; j < numIterations; j++ {
+					g.Expect(writeYaml(file.Name(), testData)).To(Succeed())
+
+					content, err := os.ReadFile(file.Name())
+					g.Expect(err).ToNot(HaveOccurred())
+					g.Expect(string(content)).To(Equal("key: value\n"))
+				}
+			}(i)
+		}
+
+		wg.Wait()
+	})
 }
