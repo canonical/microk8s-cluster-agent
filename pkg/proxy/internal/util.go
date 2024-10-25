@@ -46,8 +46,37 @@ func writeYaml(file string, data interface{}) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal yaml: %w", err)
 	}
-	if err := os.WriteFile(file, b, 0664); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
+
+	// NOTE(Hue): This is technically not a good thing to do here,
+	// because for whatever reason we might *want* to write an empty file.
+	// And we're also making this function context aware (read coupled)
+	// which is not a good thing.
+	// However, since this function is **only** used to write `provider.yaml` file and
+	// we know we don't want that file to be empty, we can safely return an error here.
+	// Make sure to remove this check if the above statement is no longer true.
+	if data == nil || len(b) == 0 {
+		return fmt.Errorf("empty yaml data")
 	}
+
+	dir := filepath.Dir(file)
+	tmpFile, err := os.CreateTemp(dir, "tmp-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.Write(b); err != nil {
+		tmpFile.Close()
+		return fmt.Errorf("failed to write to temp file: %w", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	if err := os.Rename(tmpFile.Name(), file); err != nil {
+		return fmt.Errorf("failed to rename temp file to target file: %w", err)
+	}
+
 	return nil
 }
