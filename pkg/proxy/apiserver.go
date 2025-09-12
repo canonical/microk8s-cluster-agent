@@ -8,6 +8,9 @@ import (
 	"time"
 
 	internal "github.com/canonical/microk8s-cluster-agent/pkg/proxy/internal"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // APIServerProxy is a TCP proxy that forwards requests to the API Servers of the cluster.
@@ -102,4 +105,30 @@ func (p *APIServerProxy) watchForConfigFileChanges(ctx context.Context, cancel f
 			return
 		}
 	}
+}
+
+func getKubernetesEndpoints(ctx context.Context, kubeconfigFile string) ([]string, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read load kubeconfig: %w", err)
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize kubernetes client: %w", err)
+	}
+
+	endpointSlices, err := clientset.DiscoveryV1().EndpointSlices("default").List(ctx, metav1.ListOptions{
+		LabelSelector: "kubernetes.io/service-name=kubernetes",
+	})
+	if err == nil {
+		return parseEndpointSlices(endpointSlices), nil
+	}
+	log.Printf("Failed to get EndpointSlices, falling back to Endpoints api: %v", err)
+
+	endpoints, err := clientset.CoreV1().Endpoints("default").Get(ctx, "kubernetes", metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve endpoints for kubernetes service: %w", err)
+	}
+
+	return parseEndpoints(endpoints), nil
 }
