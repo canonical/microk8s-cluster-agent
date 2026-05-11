@@ -35,7 +35,7 @@ func GetServiceArgument(s Snap, serviceName string, argument string) string {
 // UpdateServiceArguments is a no-op if updateList and delete are empty.
 // updateList is a map of key-value pairs. It will replace the argument with the new value (or just append).
 // delete is a list of arguments to remove completely. The argument is removed if present.
-// Returns a boolean whether any of the arguments were changed, as well as any errors that may have occured.
+// Returns a boolean whether any of the arguments were changed, as well as any errors that may have occurred.
 func UpdateServiceArguments(s Snap, serviceName string, updateList []map[string]string, delete []string) (bool, error) {
 	if updateList == nil {
 		updateList = []map[string]string{}
