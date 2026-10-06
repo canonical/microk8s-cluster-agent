@@ -14,12 +14,17 @@ func newWatcher(file string) (*fsnotify.Watcher, error) {
 		return nil, fmt.Errorf("failed to setup new watcher: %w", err)
 	}
 	if err := watcher.Add(file); err != nil {
+		watcher.Close()
 		return nil, fmt.Errorf("could not watch for changes in %s: %w", file, err)
 	}
 	return watcher, nil
 }
 
+// notifyOnChange owns watcher and closes it when ctx is done. The proxy creates
+// a new watcher on every restart, so a watcher left open here leaks one inotify
+// instance per restart until fs.inotify.max_user_instances is exhausted.
 func notifyOnChange(ctx context.Context, watcher *fsnotify.Watcher, ch chan<- struct{}) error {
+	defer watcher.Close()
 	for {
 		select {
 		case <-ctx.Done():
